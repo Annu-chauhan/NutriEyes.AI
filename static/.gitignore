@@ -1,0 +1,34 @@
+# Virtual environment
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+
+# VS Code
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# ML / Model files
+*.h5
+*.keras
+*.tflite
+*.pt
+*.pth
+*.pkl
+
+# TensorFlow / compiled libs (IMPORTANT 🔥)
+*.dll
+
+# Large folders
+dataset/
+models/git rm -r --cached venv

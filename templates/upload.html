@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>NutriEye</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <style>
+
+        body {
+
+            margin: 0;
+
+            font-family: Arial, sans-serif;
+
+            background: #eef3fb;
+        }
+
+        .container {
+
+            max-width: 1350px;
+
+            margin: 40px auto;
+
+            display: flex;
+
+            gap: 25px;
+
+            padding: 20px;
+        }
+
+        .main-card {
+
+            flex: 2;
+
+            background: #f8f9fb;
+
+            border-radius: 30px;
+
+            padding: 55px;
+
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        .assistant-card {
+
+            flex: 1;
+
+            background: linear-gradient(
+                135deg,
+                #0f172a,
+                #1e293b
+            );
+
+            color: white;
+
+            border-radius: 30px;
+
+            padding: 30px;
+
+            min-height: 650px;
+
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        }
+
+        h1 {
+
+            font-size: 68px;
+
+            color: #243b63;
+
+            text-align: center;
+
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+
+            text-align: center;
+
+            font-size: 22px;
+
+            color: #425b84;
+
+            margin-bottom: 40px;
+        }
+
+        .notice-box {
+
+            background: #eaf3ff;
+
+            border-left: 8px solid #2f80ed;
+
+            padding: 22px;
+
+            border-radius: 18px;
+
+            color: #17457c;
+
+            margin-bottom: 35px;
+
+            line-height: 1.7;
+        }
+
+        .form-group {
+
+            margin-bottom: 22px;
+        }
+
+        .form-group label {
+
+            display: block;
+
+            margin-bottom: 8px;
+
+            font-weight: bold;
+
+            color: #243b63;
+        }
+
+        input,
+        select {
+
+            width: 100%;
+
+            padding: 14px;
+
+            border-radius: 12px;
+
+            border: 1px solid #cbd5e1;
+
+            font-size: 16px;
+
+            box-sizing: border-box;
+        }
+
+        .btn {
+
+            width: 100%;
+
+            padding: 18px;
+
+            border: none;
+
+            border-radius: 16px;
+
+            font-size: 18px;
+
+            font-weight: bold;
+
+            color: white;
+
+            cursor: pointer;
+
+            margin-top: 15px;
+        }
+
+        .primary-btn {
+
+            background: #2563eb;
+        }
+
+        .secondary-btn {
+
+            background: #16a34a;
+
+            display: inline-block;
+
+            text-align: center;
+
+            text-decoration: none;
+
+            line-height: 18px;
+        }
+
+        .btn:hover {
+
+            opacity: 0.92;
+        }
+
+        .assistant-title {
+
+            font-size: 34px;
+
+            margin-bottom: 15px;
+        }
+
+        .assistant-sub {
+
+            color: #cbd5e1;
+
+            line-height: 1.7;
+
+            margin-bottom: 25px;
+        }
+
+        .assistant-box {
+
+            background: rgba(255,255,255,0.08);
+
+            border-radius: 20px;
+
+            padding: 22px;
+
+            margin-bottom: 20px;
+        }
+
+        .assistant-box h3 {
+
+            margin-top: 0;
+
+            margin-bottom: 10px;
+        }
+
+        .assistant-box li,
+        .assistant-box p {
+
+            line-height: 1.7;
+
+            color: #e2e8f0;
+        }
+
+        ul {
+
+            padding-left: 20px;
+        }
+
+        .model-box {
+
+            margin-top: 35px;
+
+            background: white;
+
+            border-radius: 20px;
+
+            padding: 25px;
+
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .model-box h3 {
+
+            color: #1e3a8a;
+
+            margin-top: 0;
+        }
+
+        .model-box li {
+
+            margin-bottom: 8px;
+
+            color: #334155;
+        }
+
+        @media (max-width: 992px) {
+
+            .container {
+
+                flex-direction: column;
+            }
+
+            h1 {
+
+                font-size: 52px;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- LEFT -->
+
+    <div class="main-card">
+
+        <h1>NutriEye</h1>
+
+        <p class="subtitle">
+
+            AI-Based Retinal Disease Detection &
+            Clinical Decision Support System
+
+        </p>
+
+        <div class="notice-box">
+
+            <strong>Recommended:</strong>
+
+            Upload retinal/fundus images for best prediction accuracy.
+
+            Webcam mode is only for screening demo
+            and not a true retinal scan.
+
+        </div>
+
+        <!-- FORM -->
+
+        <form
+            action="/predict"
+            method="POST"
+            enctype="multipart/form-data"
+        >
+
+            <!-- NAME -->
+
+            <div class="form-group">
+
+                <label>Patient Name</label>
+
+                <input
+                    type="text"
+                    name="patient_name"
+                    placeholder="Enter patient name"
+                    required
+                >
+
+            </div>
+
+            <!-- AGE -->
+
+            <div class="form-group">
+
+                <label>Age</label>
+
+                <input
+                    type="number"
+                    name="age"
+                    placeholder="Enter patient age"
+                    required
+                >
+
+            </div>
+
+            <!-- DIABETES -->
+
+            <div class="form-group">
+
+                <label>Diabetes Status</label>
+
+                <select name="diabetes">
+
+                    <option value="No">
+                        No
+                    </option>
+
+                    <option value="Yes">
+                        Yes
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- BP -->
+
+            <div class="form-group">
+
+                <label>Blood Pressure</label>
+
+                <select name="blood_pressure">
+
+                    <option value="Normal">
+                        Normal
+                    </option>
+
+                    <option value="High">
+                        High
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- SMOKING -->
+
+            <div class="form-group">
+
+                <label>Smoking Status</label>
+
+                <select name="smoking">
+
+                    <option value="No">
+                        No
+                    </option>
+
+                    <option value="Yes">
+                        Yes
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- IMAGE -->
+
+            <div class="form-group">
+
+                <label>Upload Retinal Image</label>
+
+                <input
+                    type="file"
+                    name="image"
+                    accept=".jpg,.jpeg,.png"
+                    required
+                >
+
+            </div>
+
+            <!-- BUTTON -->
+
+            <button
+                type="submit"
+                class="btn primary-btn"
+            >
+
+                Analyze Uploaded Retina
+
+            </button>
+
+        </form>
+
+        <!-- CAMERA -->
+
+        <a
+            href="/camera"
+            class="btn secondary-btn"
+        >
+
+            Use Live Camera Screening
+
+        </a>
+
+        <!-- MODEL INFO -->
+
+        <div class="model-box">
+
+            <h3>📊 AI Model Information</h3>
+
+            <ul>
+
+                <li>
+                    MobileNetV2 Deep Learning Backbone
+                </li>
+
+                <li>
+                    Multi-Class Retinal Disease Classification
+                </li>
+
+                <li>
+                    Confidence-Aware Clinical Prediction
+                </li>
+
+                <li>
+                    Explainable AI using Grad-CAM
+                </li>
+
+                <li>
+                    Personalized Healthcare Recommendation Engine
+                </li>
+
+            </ul>
+
+        </div>
+
+    </div>
+
+    <!-- RIGHT -->
+
+    <div class="assistant-card">
+
+        <h2 class="assistant-title">
+
+            🤖 NutriEye Assistant
+
+        </h2>
+
+        <p class="assistant-sub">
+
+            Your AI healthcare support assistant is active.
+
+            Ask questions related to retinal diseases,
+            symptoms,
+            diet,
+            precautions,
+            treatment awareness,
+            and eye care.
+
+        </p>
+
+        <div class="assistant-box">
+
+            <h3>💬 Ask Questions Like:</h3>
+
+            <ul>
+
+                <li>
+                    What is glaucoma?
+                </li>
+
+                <li>
+                    Can diabetic retinopathy be treated?
+                </li>
+
+                <li>
+                    Which foods improve eye health?
+                </li>
+
+                <li>
+                    What precautions should I follow?
+                </li>
+
+            </ul>
+
+        </div>
+
+        <div class="assistant-box">
+
+            <h3>📍 Clinical Workflow</h3>
+
+            <p>
+
+                Retinal Upload →
+                AI Screening →
+                Confidence Analysis →
+                Clinical Recommendation →
+                Doctor Guidance
+
+            </p>
+
+        </div>
+
+        <div class="assistant-box">
+
+            <h3>⚠ Medical Disclaimer</h3>
+
+            <p>
+
+                NutriEye is an AI-assisted retinal
+                screening system and should not replace
+                professional ophthalmologist diagnosis.
+
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- AI ASSISTANT -->
+
+<script
+id="omnidimension-web-widget"
+async
+src="https://omnidim.io/web_widget.js?secret_key=718fd696fde0af998e4c565f463d8fa6">
+</script>
+
+</body>
+</html>

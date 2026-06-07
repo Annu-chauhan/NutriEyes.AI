@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>NutriEye</title>
+
+    <style>
+
+        body{
+            margin:0;
+            font-family:Arial,sans-serif;
+            background:#eef3fb;
+        }
+
+        .container{
+            max-width:1400px;
+            margin:40px auto;
+            display:flex;
+            gap:25px;
+            padding:20px;
+            align-items:flex-start;
+        }
+
+        .main-card{
+            flex:2;
+            background:#f8f9fb;
+            border-radius:30px;
+            padding:60px 50px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.08);
+            text-align:center;
+        }
+
+        .assistant-card{
+            flex:1;
+            background:linear-gradient(135deg,#0f172a,#1e293b);
+            color:white;
+            border-radius:30px;
+            padding:30px;
+            min-height:650px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.12);
+            position:sticky;
+            top:30px;
+        }
+
+        h1{
+            font-size:72px;
+            color:#243b63;
+            margin-bottom:15px;
+        }
+
+        .subtitle{
+            font-size:22px;
+            color:#425b84;
+            margin-bottom:40px;
+        }
+
+        .info-box{
+            background:#eaf3ff;
+            border-left:8px solid #2f80ed;
+            padding:24px;
+            border-radius:18px;
+            text-align:left;
+            font-size:17px;
+            color:#17457c;
+            max-width:1000px;
+            margin:0 auto 40px auto;
+        }
+
+        .form-group{
+            margin-top:18px;
+        }
+
+        input,
+        select{
+            width:80%;
+            padding:14px;
+            border-radius:12px;
+            border:1px solid #cbd5e1;
+            font-size:16px;
+        }
+
+        .btn{
+            display:inline-block;
+            margin-top:20px;
+            padding:18px 38px;
+            border:none;
+            border-radius:16px;
+            font-size:18px;
+            font-weight:bold;
+            color:white;
+            cursor:pointer;
+            text-decoration:none;
+        }
+
+        .btn-blue{
+            background:#2f80ed;
+        }
+
+        .btn-green{
+            background:#16a34a;
+        }
+
+        .btn-dark{
+            background:#111827;
+        }
+
+        .btn:hover{
+            opacity:0.92;
+        }
+
+        .assistant-title{
+            font-size:32px;
+            margin-bottom:10px;
+        }
+
+        .assistant-sub{
+            color:#cbd5e1;
+            font-size:16px;
+            margin-bottom:25px;
+            line-height:1.6;
+        }
+
+        .assistant-box{
+            background:rgba(255,255,255,0.08);
+            border-radius:20px;
+            padding:22px;
+            margin-bottom:20px;
+        }
+
+        .assistant-box h3{
+            margin-top:0;
+            margin-bottom:10px;
+            font-size:20px;
+        }
+
+        .assistant-box p,
+        .assistant-box li{
+            color:#e2e8f0;
+            font-size:15px;
+            line-height:1.7;
+        }
+
+        ul{
+            padding-left:20px;
+            text-align:left;
+        }
+
+        .note{
+            margin-top:25px;
+            font-size:14px;
+            color:#94a3b8;
+            line-height:1.6;
+        }
+
+        footer{
+            text-align:center;
+            padding:20px;
+            color:#64748b;
+            font-size:14px;
+        }
+
+        @media(max-width:992px){
+
+            .container{
+                flex-direction:column;
+            }
+
+            h1{
+                font-size:52px;
+            }
+
+            .assistant-card{
+                position:static;
+                min-height:auto;
+            }
+
+            input,
+            select{
+                width:100%;
+            }
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- LEFT -->
+
+    <div class="main-card">
+
+        <h1>NutriEye</h1>
+
+        <p class="subtitle">
+            Upload a retinal scan for AI-powered retinal disease analysis
+        </p>
+
+        <div class="info-box">
+
+            <strong>Recommended:</strong>
+
+            Use retinal/fundus images for best medical accuracy.
+
+            <br><br>
+
+            NutriEye provides:
+            AI disease detection,
+            Grad-CAM explainability,
+            nutrition guidance,
+            confidence scoring,
+            doctor recommendations,
+            blockchain-secured reports,
+            and patient risk analysis.
+
+        </div>
+
+        <!-- FORM -->
+
+        <form action="/predict"
+              method="POST"
+              enctype="multipart/form-data">
+
+            <!-- PATIENT NAME -->
+
+            <div class="form-group">
+
+                <input
+                    type="text"
+                    name="patient_name"
+                    placeholder="Patient Name"
+                    required
+                >
+
+            </div>
+
+            <!-- AGE -->
+
+            <div class="form-group">
+
+                <input
+                    type="number"
+                    name="age"
+                    placeholder="Patient Age"
+                    required
+                >
+
+            </div>
+
+            <!-- DIABETES -->
+
+            <div class="form-group">
+
+                <select name="diabetes">
+
+                    <option value="No">
+                        Diabetes: No
+                    </option>
+
+                    <option value="Yes">
+                        Diabetes: Yes
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- BP -->
+
+            <div class="form-group">
+
+                <select name="blood_pressure">
+
+                    <option value="Normal">
+                        Blood Pressure: Normal
+                    </option>
+
+                    <option value="High">
+                        Blood Pressure: High
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- SMOKING -->
+
+            <div class="form-group">
+
+                <select name="smoking">
+
+                    <option value="No">
+                        Smoking: No
+                    </option>
+
+                    <option value="Yes">
+                        Smoking: Yes
+                    </option>
+
+                </select>
+
+            </div>
+
+            <!-- IMAGE -->
+
+            <div class="form-group">
+
+                <input
+                    type="file"
+                    name="image"
+                    accept=".jpg,.jpeg,.png"
+                    required
+                >
+
+            </div>
+
+            <!-- ANALYZE BUTTON -->
+
+            <button type="submit"
+                    class="btn btn-blue">
+
+                🔍 Analyze Uploaded Retina
+
+            </button>
+
+        </form>
+
+        <!-- LIVE CAMERA -->
+
+        <br><br>
+
+        <a href="/camera"
+           class="btn btn-green">
+
+           📷 Use Live Camera Screening
+
+        </a>
+
+        <!-- REPORTS -->
+
+        <br>
+
+        <a href="/reports"
+           class="btn btn-dark">
+
+           📚 View Patient Reports
+
+        </a>
+
+    </div>
+
+    <!-- RIGHT SIDE -->
+
+    <div class="assistant-card">
+
+        <h2 class="assistant-title">
+
+            🤖 NutriEye Assistant
+
+        </h2>
+
+        <p class="assistant-sub">
+
+            AI healthcare support assistant for:
+            retinal disease awareness,
+            nutrition guidance,
+            yoga suggestions,
+            precautions,
+            and clinical understanding.
+
+        </p>
+
+        <!-- QUESTIONS -->
+
+        <div class="assistant-box">
+
+            <h3>💬 Ask Things Like:</h3>
+
+            <ul>
+
+                <li>What is glaucoma?</li>
+
+                <li>Can diabetic retinopathy be treated?</li>
+
+                <li>Which foods improve eye health?</li>
+
+                <li>What precautions should I take?</li>
+
+            </ul>
+
+        </div>
+
+        <!-- FEATURES -->
+
+        <div class="assistant-box">
+
+            <h3>🔥 Features Included</h3>
+
+            <ul>
+
+                <li>AI Multi-Class Retinal Detection</li>
+
+                <li>Grad-CAM Explainability</li>
+
+                <li>Clinical Confidence Scoring</li>
+
+                <li>Personalized Health Guidance</li>
+
+                <li>Blockchain-secured Reports</li>
+
+                <li>Patient Risk Profiling</li>
+
+                <li>PDF AI Medical Reports</li>
+
+                <li>Nearby Eye Hospital Locator</li>
+
+                <li>SHA-256 Blockchain Verification</li>
+
+                <li>Clinical Decision Support</li>
+
+            </ul>
+
+        </div>
+
+        <!-- PERFORMANCE -->
+
+        <div class="assistant-box">
+
+            <h3>📈 AI Model Performance</h3>
+
+            <ul>
+
+                <li>Model Accuracy: 95%+</li>
+
+                <li>Transfer Learning CNN Model</li>
+
+                <li>Multi-Class Retina Detection</li>
+
+                <li>Explainable AI with Grad-CAM</li>
+
+                <li>Clinical Decision Support System</li>
+
+            </ul>
+
+        </div>
+
+        <!-- DATASET -->
+
+        <div class="assistant-box">
+
+            <h3>🗂 Dataset Information</h3>
+
+            <p>
+
+                NutriEye was trained on retinal
+                fundus datasets containing
+                Cataract,
+                Glaucoma,
+                Diabetic Retinopathy,
+                and Normal retina scans.
+
+            </p>
+
+        </div>
+
+        <!-- BLOCKCHAIN -->
+
+        <div class="assistant-box">
+
+            <h3>⛓ Blockchain Security</h3>
+
+            <p>
+
+                NutriEye secures AI-generated
+                medical reports using
+                SHA-256 blockchain-style hashing
+                for tamper detection and
+                integrity verification.
+
+            </p>
+
+        </div>
+
+        <!-- RESEARCH -->
+
+        <div class="assistant-box">
+
+            <h3>📚 Research Contribution</h3>
+
+            <p>
+
+                NutriEye integrates
+                Explainable AI,
+                healthcare recommendation systems,
+                blockchain verification,
+                Grad-CAM visual interpretability,
+                and clinical decision support
+                into a unified retinal analysis platform.
+
+            </p>
+
+        </div>
+
+        <!-- DISCLAIMER -->
+
+        <div class="assistant-box">
+
+            <h3>⚠ Medical Note</h3>
+
+            <p>
+
+                NutriEye is an AI-based educational
+                support system and should not replace
+                professional ophthalmologist diagnosis.
+
+            </p>
+
+        </div>
+
+        <p class="note">
+
+            Tip:
+            Upload retina image →
+            get AI prediction →
+            view Grad-CAM →
+            download medical report →
+            consult specialist.
+
+        </p>
+
+    </div>
+
+</div>
+
+<!-- AI ASSISTANT -->
+
+<script
+id="omnidimension-web-widget"
+async
+src="https://omnidim.io/web_widget.js?secret_key=718fd696fde0af998e4c565f463d8fa6">
+</script>
+
+<!-- LOADING ALERT -->
+
+<script>
+
+document.querySelector("form").addEventListener(
+    "submit",
+    function(){
+
+        alert(
+            "AI retinal analysis is processing..."
+        );
+
+    }
+);
+
+</script>
+
+<!-- FOOTER -->
+
+<footer>
+
+    NutriEye © 2026 |
+    AI-Based Retinal Disease Detection &
+    Clinical Decision Support System
+
+</footer>
+
+</body>
+</html>

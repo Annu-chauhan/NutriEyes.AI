@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>NutriEye Result</title>
+
+    <style>
+
+        body{
+            margin:0;
+            font-family:Arial,sans-serif;
+            background:#eef3fb;
+        }
+
+        .container{
+            max-width:1100px;
+            margin:40px auto;
+            background:#f8f9fb;
+            border-radius:30px;
+            padding:50px;
+            box-shadow:0 10px 30px rgba(0,0,0,0.08);
+        }
+
+        h1{
+            text-align:center;
+            font-size:56px;
+            color:#243b63;
+        }
+
+        .image-box{
+            text-align:center;
+            margin-top:30px;
+        }
+
+        .image-box img{
+            width:320px;
+            border-radius:20px;
+            box-shadow:0 0 25px rgba(0,255,0,0.5);
+        }
+
+        .result{
+            text-align:center;
+            margin-top:30px;
+        }
+
+        .result h2{
+            font-size:38px;
+            color:#1e3a8a;
+        }
+
+        .result span{
+            color:#ef4444;
+        }
+
+        .confidence{
+            font-size:22px;
+            color:#475569;
+            margin-top:10px;
+        }
+
+        .confidence-bar{
+            width:100%;
+            background:#d1d5db;
+            border-radius:20px;
+            margin-top:20px;
+            overflow:hidden;
+        }
+
+        .confidence-fill{
+            height:35px;
+            background:#22c55e;
+            text-align:center;
+            line-height:35px;
+            color:white;
+            font-weight:bold;
+        }
+
+        .card{
+            margin-top:25px;
+            padding:22px;
+            border-radius:18px;
+            background:#eef2ff;
+        }
+
+        .card h3{
+            margin-top:0;
+            color:#1e3a8a;
+        }
+
+        ul{
+            padding-left:20px;
+        }
+
+        li{
+            margin-bottom:8px;
+        }
+
+        .btn{
+            display:inline-block;
+            margin-top:20px;
+            padding:14px 28px;
+            border-radius:12px;
+            text-decoration:none;
+            color:white;
+            font-weight:bold;
+            margin-right:12px;
+        }
+
+        .blue{
+            background:#2563eb;
+        }
+
+        .green{
+            background:#16a34a;
+        }
+
+        .purple{
+            background:#7c3aed;
+        }
+
+        iframe{
+            border-radius:18px;
+        }
+
+        .warning-box{
+            background:#fff7ed;
+            padding:18px;
+            border-radius:14px;
+            margin-top:20px;
+            color:#9a3412;
+            font-weight:bold;
+            border-left:6px solid orange;
+        }
+
+        .gradcam-img{
+            width:450px;
+            border-radius:20px;
+            border:4px solid white;
+            box-shadow:0 0 20px rgba(0,0,0,0.25);
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>NutriEye Analysis Result</h1>
+
+    <!-- IMAGE -->
+
+    <div class="image-box">
+
+        <img
+            src="{{ uploaded_image }}"
+            alt="Uploaded Retina"
+        >
+
+    </div>
+
+    <!-- RESULT -->
+
+    <div class="result">
+
+        <h2>
+
+            Predicted Result:
+
+            <span>{{ prediction }}</span>
+
+        </h2>
+
+        <p class="confidence">
+
+            Confidence:
+
+            <strong>{{ confidence }}%</strong>
+
+        </p>
+
+        <!-- CONFIDENCE BAR -->
+
+        <div class="confidence-bar">
+
+            <div
+                class="confidence-fill"
+                style="width: {{ confidence }}%;"
+            >
+
+                {{ confidence }}%
+
+            </div>
+
+        </div>
+
+        <!-- LOW CONFIDENCE WARNING -->
+
+        {% if confidence < 85 %}
+
+        <div class="warning-box">
+
+            ⚠ Low reliability prediction.
+
+            Use proper retinal fundus image
+            for accurate diagnosis.
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- RISK -->
+
+    <div class="card"
+         style="background:#fee2e2;">
+
+        <h3>🧠 Patient Risk Assessment</h3>
+
+        <p>
+
+            <strong>{{ risk_level }}</strong>
+
+        </p>
+
+    </div>
+
+    <!-- TOP PREDICTIONS -->
+
+    <div class="card">
+
+        <h3>📊 Top-2 Predictions</h3>
+
+        <ul>
+
+            {% for pred in top2_predictions %}
+
+            <li>
+
+                <strong>{{ pred.disease }}</strong>
+
+                —
+
+                {{ pred.confidence }}%
+
+            </li>
+
+            {% endfor %}
+
+        </ul>
+
+    </div>
+
+    <!-- HEALTH STATUS -->
+
+    <div class="card">
+
+        <h3>🩺 Eye Health Status</h3>
+
+        <p>
+
+            {% if prediction == "Normal" %}
+
+                Healthy retinal pattern detected.
+
+            {% else %}
+
+                Possible retinal abnormality detected.
+
+            {% endif %}
+
+        </p>
+
+    </div>
+
+    <!-- DESCRIPTION -->
+
+    <div class="card"
+         style="background:#fff7ed;">
+
+        <h3>📘 Disease Explanation</h3>
+
+        <p>
+
+            {{ recommendation.description }}
+
+        </p>
+
+    </div>
+
+    <!-- DIET -->
+
+    <div class="card"
+         style="background:#ecfdf5;">
+
+        <h3>🥗 Recommended Diet</h3>
+
+        <ul>
+
+            {% for item in recommendation.diet %}
+
+            <li>{{ item }}</li>
+
+            {% endfor %}
+
+        </ul>
+
+    </div>
+
+    <!-- EXERCISE -->
+
+    <div class="card"
+         style="background:#f0fdf4;">
+
+        <h3>🏃 Recommended Exercise</h3>
+
+        <ul>
+
+            {% for item in recommendation.exercise %}
+
+            <li>{{ item }}</li>
+
+            {% endfor %}
+
+        </ul>
+
+    </div>
+
+    <!-- YOGA -->
+
+    <div class="card"
+         style="background:#fef9c3;">
+
+        <h3>🧘 Recommended Yoga</h3>
+
+        <ul>
+
+            {% for item in recommendation.yoga %}
+
+            <li>{{ item }}</li>
+
+            {% endfor %}
+
+        </ul>
+
+    </div>
+
+    <!-- PRECAUTIONS -->
+
+    <div class="card"
+         style="background:#fee2e2;">
+
+        <h3>⚠ Precautions</h3>
+
+        <ul>
+
+            {% for item in recommendation.precautions %}
+
+            <li>{{ item }}</li>
+
+            {% endfor %}
+
+        </ul>
+
+    </div>
+
+    <!-- DOCTOR -->
+
+    <div class="card"
+         style="background:#e0f2fe;">
+
+        <h3>👨‍⚕ Doctor Recommendation</h3>
+
+        <p>
+
+            {{ recommendation.doctor }}
+
+        </p>
+
+    </div>
+
+    <!-- GRAD-CAM -->
+
+    <div class="card"
+         style="background:#ede9fe;">
+
+        <h3>🔥 Grad-CAM Explainability</h3>
+
+        <p>
+
+            Highlighted retinal regions influencing
+            the AI prediction.
+
+        </p>
+
+        {% if gradcam_image %}
+
+        <div
+            style="
+                text-align:center;
+                margin-top:20px;
+            "
+        >
+
+            <img
+
+                src="{{ gradcam_image }}?v={{ confidence }}"
+
+                alt="GradCAM"
+
+                class="gradcam-img"
+            >
+
+        </div>
+
+        {% else %}
+
+        <p
+            style="
+                color:red;
+                font-weight:bold;
+            "
+        >
+
+            Grad-CAM visualization unavailable.
+
+        </p>
+
+        {% endif %}
+
+    </div>
+
+    <!-- MAP -->
+
+    <div class="card">
+
+        <h3>📍 Nearby Eye Hospitals</h3>
+
+        <iframe
+            src="https://www.google.com/maps?q=eye+hospital+near+me&output=embed"
+            width="100%"
+            height="350"
+            style="border:0;"
+            allowfullscreen=""
+            loading="lazy">
+
+        </iframe>
+
+    </div>
+
+    <!-- AI INSIGHT -->
+
+    <div class="card"
+         style="
+            background:#111827;
+            color:white;
+         ">
+
+        <h3>🤖 AI Medical Insight</h3>
+
+        <p>
+
+            The AI model predicts
+
+            <strong>{{ prediction }}</strong>
+
+            with
+
+            <strong>{{ confidence }}%</strong>
+
+            confidence.
+
+            Please consult an ophthalmologist
+            for professional medical confirmation.
+
+        </p>
+
+    </div>
+
+    <!-- BLOCKCHAIN -->
+
+    <div class="card"
+         style="background:#f1f5f9;">
+
+        <h3>⛓ Blockchain Security Verification</h3>
+
+        <p>
+
+            This AI medical report has been secured
+            using SHA-256 blockchain-style hashing
+            for integrity verification.
+
+        </p>
+
+        <p>
+
+            <strong>Status:</strong>
+
+            <span style="color:green;">
+                ✔ Verified & Tamper Protected
+            </span>
+
+        </p>
+
+        <p
+            style="
+                word-break:break-all;
+                font-size:14px;
+                margin-top:15px;
+            "
+        >
+
+            <strong>Hash:</strong><br>
+
+            {{ hash_value }}
+
+        </p>
+
+    </div>
+
+    <!-- BUTTONS -->
+
+    <div style="text-align:center;">
+
+        <a
+            href="{{ pdf_report }}"
+            download
+            class="btn green"
+        >
+
+            📄 Download AI Report
+
+        </a>
+
+        <a
+            href="/reports"
+            class="btn purple"
+        >
+
+            📚 Report History
+
+        </a>
+
+        <a
+            href="/"
+            class="btn blue"
+        >
+
+            ⬅ Back to Upload
+
+        </a>
+
+    </div>
+
+</div>
+
+<!-- AI ASSISTANT -->
+
+<script
+id="omnidimension-web-widget"
+async
+src="https://omnidim.io/web_widget.js?secret_key=718fd696fde0af998e4c565f463d8fa6">
+</script>
+
+</body>
+</html>

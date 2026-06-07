@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>NutriEye Reports</title>
+
+    <style>
+
+        body{
+            font-family:Arial;
+            background:#eef3fb;
+            padding:40px;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            background:white;
+        }
+
+        th, td{
+            padding:15px;
+            border:1px solid #ddd;
+            text-align:center;
+        }
+
+        th{
+            background:#2563eb;
+            color:white;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<h1>📄 NutriEye Report History</h1>
+
+<table>
+
+<tr>
+
+    <th>Patient</th>
+    <th>Disease</th>
+    <th>Confidence</th>
+    <th>Timestamp</th>
+
+</tr>
+
+{% for report in reports %}
+
+<tr>
+
+    <td>{{ report.patient_name }}</td>
+
+    <td>{{ report.disease }}</td>
+
+    <td>{{ report.confidence }}%</td>
+
+    <td>{{ report.timestamp }}</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</body>
+</html>
