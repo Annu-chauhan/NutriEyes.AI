@@ -11,6 +11,7 @@ from utils.health_recommendation import (
     get_health_recommendation
 )
 
+
 from utils.gradcam import (
     generate_gradcam
 )
@@ -21,7 +22,14 @@ print("Retina model loaded successfully")
 # LOAD TRAINED MODEL
 # =========================
 
-model = load_model("retinal_5class.keras")
+from huggingface_hub import hf_hub_download
+
+MODEL_PATH = hf_hub_download(
+    repo_id="Parul06/NutriEye-Model",
+    filename="retinal_5class.keras"
+)
+
+
 # =========================
 # MODEL INFO
 # =========================
