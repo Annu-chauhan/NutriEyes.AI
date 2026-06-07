@@ -4,31 +4,38 @@ import numpy as np
 from PIL import Image
 
 from tensorflow.keras.models import load_model
-
 from tensorflow.keras.preprocessing import image
+
+from huggingface_hub import hf_hub_download
 
 from utils.health_recommendation import (
     get_health_recommendation
 )
 
-
 from utils.gradcam import (
     generate_gradcam
 )
 
-print("Retina model loaded successfully")
+print("Retina model loading...")
 
 # =========================
-# LOAD TRAINED MODEL
+# DOWNLOAD MODEL FROM HF
 # =========================
-
-from huggingface_hub import hf_hub_download
 
 MODEL_PATH = hf_hub_download(
     repo_id="Parul06/NutriEye-Model",
     filename="retinal_5class.keras"
 )
 
+print("Downloaded model:", MODEL_PATH)
+
+# =========================
+# LOAD MODEL
+# =========================
+
+model = load_model(MODEL_PATH)
+
+print("Retina model loaded successfully")
 
 # =========================
 # MODEL INFO
@@ -44,15 +51,10 @@ print(
 # =========================
 
 class_labels = [
-
     "Cataract",
-
     "Diabetic Retinopathy",
-
     "Glaucoma",
-
     "Normal",
-
     "Retinal Disease"
 ]
 
