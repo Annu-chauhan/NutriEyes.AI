@@ -52,7 +52,7 @@ class_labels = [
     "Diabetic Retinopathy",
     "Glaucoma",
     "Normal",
-    "Retinal Disease"
+    
 ]
 
 # =========================
@@ -180,14 +180,24 @@ def predict_disease(filepath):
     # =========================
 
     prediction = model.predict(img_array)
-    print("Raw prediction:", prediction)
-    print("Argmax:", np.argmax(prediction))
+
+    print("\n========== PREDICTION ==========")
+    print(prediction)
+
+    for i, p in enumerate(prediction[0]):
+        print(
+        class_labels[i],
+        "=",
+        round(float(p) * 100, 2),
+        "%"
+    )
 
     print(
-        "\nRaw Prediction:",
-        prediction,
-        "\n"
-    )
+    "Predicted:",
+    class_labels[np.argmax(prediction)]
+)
+
+    print("================================\n")
 
     # =========================
     # BEST CLASS
