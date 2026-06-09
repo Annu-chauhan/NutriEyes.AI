@@ -179,9 +179,9 @@ def predict_disease(filepath):
     # MODEL PREDICTION
     # =========================
 
-    prediction = model.predict(
-        img_array
-    )
+    prediction = model.predict(img_array)
+    print("Raw prediction:", prediction)
+    print("Argmax:", np.argmax(prediction))
 
     print(
         "\nRaw Prediction:",
