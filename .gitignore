@@ -7,13 +7,14 @@ __pycache__/
 *.so
 *.exe
 .env
+
 dataset/
 .ipynb_checkpoints/
+
 instance/*.db
+
 static/uploads/
 static/*.pdf
-venv/
-venv310/
 
 model/efficientnet.h5
 model/efficientnet.weights.h5
@@ -23,8 +24,3 @@ model/mobilenet.weights.h5
 model/resnet.h5
 model/resnet.weights.h5
 model/retinal_5class.weights.h5
-*.h5
-*.weights.h5
-dataset/
-model/
-*.keras
