@@ -1,3 +1,11 @@
+---
+title: NutriEye
+emoji: "👁️"
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
 # NutriEye – AI-Based Multi-Class Retinal Disease Detection System
 
 ## Overview
