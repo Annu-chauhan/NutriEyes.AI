@@ -19,7 +19,7 @@ from utils.predict import (
 from utils.pdf_report import (
     generate_pdf_report
 )
-from flask_sqlalchemy import SQLAlchemy
+
 
 # =========================
 # LIVE CAMERA IMPORT
@@ -60,7 +60,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///retina.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
-db = SQLAlchemy(app)
+
 
 with app.app_context():
     db.create_all()
