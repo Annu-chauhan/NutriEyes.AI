@@ -16,7 +16,10 @@ from utils.gradcam import (
 
 print("Retina model loading...")
 
-MODEL_PATH = "retinal_5class.h5"
+MODEL_PATH = os.path.join(
+    "model",
+    "retinal_5class.h5"
+)
 
 print("Using local model:", MODEL_PATH)
 
