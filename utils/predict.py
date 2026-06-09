@@ -6,8 +6,6 @@ from PIL import Image
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 
-from huggingface_hub import hf_hub_download
-
 from utils.health_recommendation import (
     get_health_recommendation
 )
@@ -18,20 +16,19 @@ from utils.gradcam import (
 
 print("Retina model loading...")
 
-# =========================
-# DOWNLOAD MODEL FROM HF
-# =========================
 
-MODEL_PATH = hf_hub_download(
-    repo_id="Parul06/NutriEye-Model",
-    filename="retinal_5class.keras"
+
+MODEL_PATH = os.path.join(
+    "model",
+    "retinal_5class.h5"
 )
 
-print("Downloaded model:", MODEL_PATH)
+print("Using local model:", MODEL_PATH)
 
-# =========================
-# LOAD MODEL
-# =========================
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(
+        f"Model not found: {MODEL_PATH}"
+    )
 
 model = load_model(
     MODEL_PATH,
@@ -39,7 +36,6 @@ model = load_model(
 )
 
 print("Retina model loaded successfully")
-
 # =========================
 # MODEL INFO
 # =========================
