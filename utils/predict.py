@@ -33,7 +33,10 @@ print("Downloaded model:", MODEL_PATH)
 # LOAD MODEL
 # =========================
 
-model = load_model(MODEL_PATH)
+model = load_model(
+    MODEL_PATH,
+    compile=False
+)
 
 print("Retina model loaded successfully")
 
