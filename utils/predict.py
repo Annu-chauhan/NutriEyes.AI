@@ -175,29 +175,30 @@ def predict_disease(filepath):
         axis=0
     )
 
-    # =========================
+        # =========================
     # MODEL PREDICTION
     # =========================
 
     prediction = model.predict(img_array)
 
     print("\n========== PREDICTION ==========")
-    print(prediction)
 
-    for i, p in enumerate(prediction[0]):
+    for i, value in enumerate(prediction[0]):
+
         print(
-        class_labels[i],
-        "=",
-        round(float(p) * 100, 2),
-        "%"
-    )
+            class_labels[i],
+            "=",
+            round(float(value * 100), 2),
+            "%"
+        )
 
     print(
-    "Predicted:",
-    class_labels[np.argmax(prediction)]
-)
+        "Predicted Index:",
+        np.argmax(prediction)
+    )
 
     print("================================\n")
+  
 
     # =========================
     # BEST CLASS
