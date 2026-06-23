@@ -119,12 +119,6 @@ def predict_disease(filepath):
     img_array = image.img_to_array(img)
 
     # =========================
-    # NORMALIZE IMAGE
-    # =========================
-
-    img_array = img_array / 255.0
-
-    # =========================
     # INVALID IMAGE CHECK
     # =========================
 
@@ -165,40 +159,44 @@ def predict_disease(filepath):
         }
 
     # =========================
-    # EXPAND DIMENSIONS
-    # =========================
+# NORMALIZE IMAGE
+# =========================
+
+    
+    
+
+# =========================
+# EXPAND DIMENSIONS
+# =========================
 
     img_array = np.expand_dims(
+    img_array,
+    axis=0
+)
 
-        img_array,
-
-        axis=0
-    )
-
-        # =========================
+    # =========================
     # MODEL PREDICTION
     # =========================
 
     prediction = model.predict(img_array)
 
     print("\n========== PREDICTION ==========")
+    print(prediction)
 
-    for i, value in enumerate(prediction[0]):
-
+    for i, p in enumerate(prediction[0]):
         print(
-            class_labels[i],
-            "=",
-            round(float(value * 100), 2),
-            "%"
-        )
-
-    print(
-        "Predicted Index:",
-        np.argmax(prediction)
+        class_labels[i],
+        "=",
+        round(float(p) * 100, 2),
+        "%"
     )
 
+    print(
+    "Predicted:",
+    class_labels[np.argmax(prediction)]
+)
+
     print("================================\n")
-  
 
     # =========================
     # BEST CLASS
@@ -271,13 +269,15 @@ def predict_disease(filepath):
     # GRADCAM PATH
     # =========================
 
+    base_filename = os.path.basename(filepath)
+
     gradcam_path = os.path.join(
 
         "static",
 
         "uploads",
 
-        "gradcam.jpg"
+        f"gradcam_{base_filename}"
     )
 
     # =========================

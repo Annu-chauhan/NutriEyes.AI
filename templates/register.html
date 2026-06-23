@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - Clinician Registration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;">
+
+<div class="glass-panel" style="width: 100%; max-width: 440px; padding: 40px; text-align: center;">
+    <div class="brand-section" style="margin-bottom: 30px;">
+        <h1 class="brand-title" style="font-size: 2.8rem; display: inline-flex; align-items: center; gap: 8px;">
+            👁 NutriEye
+        </h1>
+        <p class="subtitle" style="font-size: 0.95rem; margin-top: 6px;">Register Clinician Account</p>
+    </div>
+
+    <!-- FLASHED MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form action="/register" method="POST" style="display: flex; flex-direction: column; gap: 20px; text-align: left;">
+        <div class="form-group">
+            <label for="username">Clinician Name</label>
+            <input type="text" id="username" name="username" placeholder="E.g. Dr. John Watson" required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+            <label for="email">Clinician Email</label>
+            <input type="email" id="email" name="email" placeholder="E.g. dr.john@hospital.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Create password" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
+            Create Account
+        </button>
+    </form>
+
+    <div style="margin-top: 24px; font-size: 0.9rem; color: var(--color-text-secondary);">
+        Already have an account? 
+        <a href="/login" style="color: var(--color-primary); font-weight: 600; text-decoration: none;">Login here</a>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,13 +1,19 @@
 import os
 import hashlib
+from functools import wraps
 
 from flask import (
     Flask,
     render_template,
-    request
+    request,
+    redirect,
+    url_for,
+    session,
+    flash
 )
 
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from flask_sqlalchemy import SQLAlchemy
 
@@ -19,7 +25,7 @@ from utils.predict import (
 from utils.pdf_report import (
     generate_pdf_report
 )
-from flask_sqlalchemy import SQLAlchemy
+
 
 # =========================
 # LIVE CAMERA IMPORT
@@ -34,6 +40,7 @@ from utils.camera import (
 # =========================
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "nutrieye_clinical_secret_key_2026")
 
 # =========================
 # UPLOAD CONFIG
@@ -61,8 +68,63 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
 # =========================
-# DATABASE MODEL
+# DATABASE MODELS
 # =========================
+
+class User(db.Model):
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    username = db.Column(
+        db.String(80),
+        unique=True,
+        nullable=False
+    )
+
+    email = db.Column(
+        db.String(120),
+        unique=True,
+        nullable=False
+    )
+
+    password_hash = db.Column(
+        db.String(256),
+        nullable=False
+    )
+
+    role = db.Column(
+        db.String(20),
+        default="clinician"
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=db.func.current_timestamp()
+    )
+
+# =========================
+# AUTHENTICATION DECORATOR & CONTEXT
+# =========================
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please log in to access this page.", "warning")
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.context_processor
+def inject_user():
+    if "user_id" in session:
+        user = db.session.get(User, session["user_id"])
+        return dict(current_user=user)
+    return dict(current_user=None)
+
 
 class Report(db.Model):
 
@@ -122,10 +184,85 @@ def generate_hash(data):
     ).hexdigest()
 
 # =========================
+# REGISTRATION ROUTE
+# =========================
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if "user_id" in session:
+        return redirect(url_for("home"))
+        
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        
+        if not username or not email or not password:
+            flash("All fields are required.", "danger")
+            return render_template("register.html")
+            
+        # Check if username or email already exists
+        existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
+        if existing_user:
+            flash("Username or email already registered.", "danger")
+            return render_template("register.html")
+            
+        # Create user
+        hashed_password = generate_password_hash(password)
+        new_user = User(username=username, email=email, password_hash=hashed_password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash("Registration successful. Please log in.", "success")
+        return redirect(url_for("login"))
+        
+    return render_template("register.html")
+
+# =========================
+# LOGIN ROUTE
+# =========================
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if "user_id" in session:
+        return redirect(url_for("home"))
+        
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        
+        if not email or not password:
+            flash("Email and password are required.", "danger")
+            return render_template("login.html")
+            
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password_hash, password):
+            session["user_id"] = user.id
+            flash(f"Welcome back, Dr. {user.username}!", "success")
+            return redirect(url_for("home"))
+        else:
+            flash("Invalid email or password.", "danger")
+            return render_template("login.html")
+            
+    return render_template("login.html")
+
+# =========================
+# LOGOUT ROUTE
+# =========================
+
+@app.route("/logout")
+def logout():
+    session.pop("user_id", None)
+    flash("You have logged out successfully.", "success")
+    return redirect(url_for("login"))
+
+# =========================
 # HOME PAGE
 # =========================
 
 @app.route("/")
+@login_required
 def home():
 
     return render_template(
@@ -137,150 +274,11 @@ def home():
 # =========================
 
 @app.route("/camera")
+@login_required
 def camera():
 
-    return """
-
-    <h2 style='text-align:center;margin-top:100px;'>
-
-    Live camera is available only in desktop version.
-
-    <br><br>
-
-    Please upload a retinal image.
-
-    <br><br>
-
-    <a href='/'>Back</a>
-
-    </h2>
-
-    """
-    # =========================
-    # AI PREDICTION
-    # =========================
-
-    result = predict_disease(
-        filepath
-    )
-
-    prediction = result["disease"]
-
-    confidence = result["confidence"]
-
-    recommendation = result["recommendation"]
-
-    top2_predictions = result["top2_predictions"]
-
-    gradcam_image = result.get(
-        "gradcam_image"
-    )
-
-    # =========================
-    # CAMERA RISK MODE
-    # =========================
-
-    risk_level = "Camera Screening Mode"
-
-    # =========================
-    # HASH
-    # =========================
-
-    hash_input = f"""
-
-    CameraUser
-    {prediction}
-    {confidence}
-
-    """
-
-    hash_value = generate_hash(
-        hash_input
-    )
-
-    # =========================
-    # SAVE REPORT
-    # =========================
-
-    report = Report(
-
-        patient_name="Camera User",
-
-        age=0,
-
-        diabetes="Unknown",
-
-        blood_pressure="Unknown",
-
-        smoking="Unknown",
-
-        disease=prediction,
-
-        confidence=confidence,
-
-        hash_value=hash_value
-    )
-
-    db.session.add(report)
-
-    db.session.commit()
-
-    # =========================
-    # PDF REPORT
-    # =========================
-
-    pdf_path = os.path.join(
-        "static",
-        "camera_report.pdf"
-    )
-
-    generate_pdf_report(
-
-        "Camera User",
-
-        prediction,
-
-        confidence,
-
-        recommendation,
-
-        hash_value,
-
-        pdf_path
-    )
-
-    # =========================
-    # RESULT PAGE
-    # =========================
-
     return render_template(
-
-        "result.html",
-
-        uploaded_image="/" + filepath.replace("\\", "/"),
-
-        prediction=prediction,
-
-        confidence=confidence,
-
-        recommendation=recommendation,
-
-        top2_predictions=top2_predictions,
-
-        risk_level=risk_level,
-
-        pdf_report="/" + pdf_path.replace("\\", "/"),
-
-        gradcam_image=(
-
-            "/" + gradcam_image
-
-            if gradcam_image
-
-            else None
-        ),
-
-        hash_value=hash_value
+        "camera.html"
     )
 
 # =========================
@@ -288,6 +286,7 @@ def camera():
 # =========================
 
 @app.route("/reports")
+@login_required
 def reports():
 
     all_reports = Report.query.order_by(
@@ -307,7 +306,7 @@ def reports():
     "/predict",
     methods=["POST"]
 )
-
+@login_required
 def predict():
 
     # =========================
@@ -507,14 +506,7 @@ def predict():
 
         pdf_report="/" + pdf_path.replace("\\", "/"),
 
-        gradcam_image=(
-
-            "/" + gradcam_image
-
-            if gradcam_image
-
-            else None
-        ),
+        gradcam_image=gradcam_image,
 
         hash_value=hash_value
     )
@@ -524,10 +516,6 @@ def predict():
 # =========================
 
 if __name__ == "__main__":
-
-    with app.app_context():
-
-        db.create_all()
 
     app.run(
         debug=True,

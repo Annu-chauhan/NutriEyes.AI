@@ -19,71 +19,101 @@ def generate_gradcam(model, img_path, save_path):
 
     img_array = image.img_to_array(img)
 
+    # Do not manually divide by 255 here, because the outer model has Rescaling(1./255) layer 0.
     img_array = np.expand_dims(
         img_array,
         axis=0
     )
 
-    img_array = img_array / 255.0
-
     # =========================
-    # MANUAL LAST CONV LAYER
+    # FIND MOBILENET MODEL
     # =========================
 
-    last_conv_layer_name = None
+    base_model = None
 
-    # FIND LAST VALID CONV LAYER
+    for layer in model.layers:
 
-    for layer in reversed(model.layers):
+        if "mobilenet" in layer.name.lower():
 
-        if "conv" in layer.name.lower():
+            base_model = layer
 
-            last_conv_layer_name = layer.name
+            break
+
+    if base_model is None:
+
+        raise Exception(
+            "MobileNetV2 layer not found"
+        )
+
+    # =========================
+    # LAST CONV LAYER
+    # =========================
+
+    last_conv_layer = None
+
+    for layer in reversed(base_model.layers):
+
+        if isinstance(
+            layer,
+            tf.keras.layers.Conv2D
+        ):
+
+            last_conv_layer = layer.name
 
             break
 
     print(
         "\nUsing Layer:",
-        last_conv_layer_name
+        last_conv_layer
     )
 
-    if last_conv_layer_name is None:
+    if last_conv_layer is None:
 
         raise Exception(
             "No Conv Layer Found"
         )
 
     # =========================
-    # CREATE MODEL
+    # BUILD MULTI-OUTPUT BASE MODEL
     # =========================
 
-    grad_model = tf.keras.models.Model(
-
-        inputs=model.inputs,
-
+    base_model_multi = tf.keras.models.Model(
+        inputs=base_model.input,
         outputs=[
-
-            model.get_layer(
-                last_conv_layer_name
-            ).output,
-
-            model.output
+            base_model.get_layer(last_conv_layer).output,
+            base_model.output
         ]
     )
 
     # =========================
-    # GRADIENT CALCULATION
+    # GRADIENTS WITH SEQUENTIAL FORWARD PASS
     # =========================
 
     with tf.GradientTape() as tape:
 
-        conv_outputs, predictions = grad_model(
-            img_array
-        )
+        # Layer 0: Rescaling
+        x = model.layers[0](img_array)
 
-        pred_index = tf.argmax(
-            predictions[0]
-        )
+        # Layer 1: Data Augmentation
+        x = model.layers[1](x, training=False)
+
+        # Pass to MobileNetV2 and watch conv_outputs
+        conv_outputs, base_out = base_model_multi(x)
+        tape.watch(conv_outputs)
+
+        # Layer 3: GlobalAveragePooling2D
+        x = model.layers[3](base_out)
+
+        # Layer 4: Dense
+        x = model.layers[4](x)
+
+        # Layer 5: Dropout
+        x = model.layers[5](x, training=False)
+
+        # Layer 6: Dense (final softmax output)
+        predictions = model.layers[6](x)
+
+        pred_index = tf.argmax(predictions[0])
 
         loss = predictions[:, pred_index]
 
@@ -91,16 +121,6 @@ def generate_gradcam(model, img_path, save_path):
         loss,
         conv_outputs
     )
-
-    if grads is None:
-
-        raise Exception(
-            "Gradients are None"
-        )
-
-    # =========================
-    # CREATE HEATMAP
-    # =========================
 
     pooled_grads = tf.reduce_mean(
         grads,
@@ -114,22 +134,25 @@ def generate_gradcam(model, img_path, save_path):
         axis=-1
     )
 
+    # Convert to numpy before using numpy functions
+    heatmap = heatmap.numpy()
+
     heatmap = np.maximum(
         heatmap,
         0
     )
 
-    max_val = np.max(heatmap)
-
-    if max_val != 0:
-
-        heatmap /= max_val
+    heatmap /= (
+        np.max(heatmap) + 1e-8
+    )
 
     # =========================
     # ORIGINAL IMAGE
     # =========================
 
-    original_img = cv2.imread(img_path)
+    original_img = cv2.imread(
+        img_path
+    )
 
     original_img = cv2.resize(
         original_img,
@@ -137,11 +160,11 @@ def generate_gradcam(model, img_path, save_path):
     )
 
     # =========================
-    # HEATMAP PROCESS
+    # HEATMAP
     # =========================
 
     heatmap = cv2.resize(
-        heatmap.numpy(),
+        heatmap,
         (224, 224)
     )
 
@@ -170,7 +193,7 @@ def generate_gradcam(model, img_path, save_path):
     )
 
     # =========================
-    # SAVE IMAGE
+    # SAVE
     # =========================
 
     os.makedirs(

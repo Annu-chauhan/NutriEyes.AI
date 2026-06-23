@@ -1,579 +1,260 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>NutriEye</title>
-
-    <style>
-
-        body{
-            margin:0;
-            font-family:Arial,sans-serif;
-            background:#eef3fb;
-        }
-
-        .container{
-            max-width:1400px;
-            margin:40px auto;
-            display:flex;
-            gap:25px;
-            padding:20px;
-            align-items:flex-start;
-        }
-
-        .main-card{
-            flex:2;
-            background:#f8f9fb;
-            border-radius:30px;
-            padding:60px 50px;
-            box-shadow:0 10px 30px rgba(0,0,0,0.08);
-            text-align:center;
-        }
-
-        .assistant-card{
-            flex:1;
-            background:linear-gradient(135deg,#0f172a,#1e293b);
-            color:white;
-            border-radius:30px;
-            padding:30px;
-            min-height:650px;
-            box-shadow:0 10px 30px rgba(0,0,0,0.12);
-            position:sticky;
-            top:30px;
-        }
-
-        h1{
-            font-size:72px;
-            color:#243b63;
-            margin-bottom:15px;
-        }
-
-        .subtitle{
-            font-size:22px;
-            color:#425b84;
-            margin-bottom:40px;
-        }
-
-        .info-box{
-            background:#eaf3ff;
-            border-left:8px solid #2f80ed;
-            padding:24px;
-            border-radius:18px;
-            text-align:left;
-            font-size:17px;
-            color:#17457c;
-            max-width:1000px;
-            margin:0 auto 40px auto;
-        }
-
-        .form-group{
-            margin-top:18px;
-        }
-
-        input,
-        select{
-            width:80%;
-            padding:14px;
-            border-radius:12px;
-            border:1px solid #cbd5e1;
-            font-size:16px;
-        }
-
-        .btn{
-            display:inline-block;
-            margin-top:20px;
-            padding:18px 38px;
-            border:none;
-            border-radius:16px;
-            font-size:18px;
-            font-weight:bold;
-            color:white;
-            cursor:pointer;
-            text-decoration:none;
-        }
-
-        .btn-blue{
-            background:#2f80ed;
-        }
-
-        .btn-green{
-            background:#16a34a;
-        }
-
-        .btn-dark{
-            background:#111827;
-        }
-
-        .btn:hover{
-            opacity:0.92;
-        }
-
-        .assistant-title{
-            font-size:32px;
-            margin-bottom:10px;
-        }
-
-        .assistant-sub{
-            color:#cbd5e1;
-            font-size:16px;
-            margin-bottom:25px;
-            line-height:1.6;
-        }
-
-        .assistant-box{
-            background:rgba(255,255,255,0.08);
-            border-radius:20px;
-            padding:22px;
-            margin-bottom:20px;
-        }
-
-        .assistant-box h3{
-            margin-top:0;
-            margin-bottom:10px;
-            font-size:20px;
-        }
-
-        .assistant-box p,
-        .assistant-box li{
-            color:#e2e8f0;
-            font-size:15px;
-            line-height:1.7;
-        }
-
-        ul{
-            padding-left:20px;
-            text-align:left;
-        }
-
-        .note{
-            margin-top:25px;
-            font-size:14px;
-            color:#94a3b8;
-            line-height:1.6;
-        }
-
-        footer{
-            text-align:center;
-            padding:20px;
-            color:#64748b;
-            font-size:14px;
-        }
-
-        @media(max-width:992px){
-
-            .container{
-                flex-direction:column;
-            }
-
-            h1{
-                font-size:52px;
-            }
-
-            .assistant-card{
-                position:static;
-                min-height:auto;
-            }
-
-            input,
-            select{
-                width:100%;
-            }
-        }
-
-    </style>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - AI Retinal Diagnosis & Clinical Support</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-
 <body>
 
-<div class="container">
-
-    <!-- LEFT -->
-
-    <div class="main-card">
-
-        <h1>NutriEye</h1>
-
-        <p class="subtitle">
-            Upload a retinal scan for AI-powered retinal disease analysis
-        </p>
-
-        <div class="info-box">
-
-            <strong>Recommended:</strong>
-
-            Use retinal/fundus images for best medical accuracy.
-
-            <br><br>
-
-            NutriEye provides:
-            AI disease detection,
-            Grad-CAM explainability,
-            nutrition guidance,
-            confidence scoring,
-            doctor recommendations,
-            blockchain-secured reports,
-            and patient risk analysis.
-
+<div class="container animate-fade-in">
+    <!-- LEFT PANEL: MAIN PORTAL -->
+    <div class="main-card glass-panel">
+        <!-- CLINICIAN HEADER -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:24px;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.9rem; color:var(--color-text-secondary);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color:var(--color-primary);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span>Active Clinician: <strong style="color:var(--color-text-primary);">{{ current_user.username }}</strong></span>
+            </div>
+            <a href="/logout" style="font-size:0.85rem; color:var(--color-danger); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px;">
+                <span>Logout</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+            </a>
         </div>
 
-        <!-- FORM -->
+        <!-- FLASHED ALERTS -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-        <form action="/predict"
-              method="POST"
-              enctype="multipart/form-data">
+        <div class="brand-section">
+            <h1 class="brand-title">
+                👁 NutriEye <span class="brand-badge">Clinical AI v2.5</span>
+            </h1>
+            <p class="subtitle">AI-powered retinal disease screening & explainability platform</p>
+        </div>
 
-            <!-- PATIENT NAME -->
-
-            <div class="form-group">
-
-                <input
-                    type="text"
-                    name="patient_name"
-                    placeholder="Patient Name"
-                    required
-                >
-
+        <div class="notice-box">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+                <strong>Clinical Recommendation:</strong>
+                For best diagnostic accuracy, upload high-resolution retinal fundus scans. Ensure the image is clear and centered on the macula/optic disc.
             </div>
+        </div>
 
-            <!-- AGE -->
+        <!-- DIAGNOSTIC INPUT FORM -->
+        <form action="/predict" method="POST" enctype="multipart/form-data" id="analysis-form">
+            <div class="form-grid">
+                <!-- PATIENT NAME -->
+                <div class="form-group">
+                    <label for="patient_name">Patient Name</label>
+                    <input type="text" id="patient_name" name="patient_name" placeholder="E.g. John Doe" required>
+                </div>
 
-            <div class="form-group">
+                <!-- PATIENT AGE -->
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" name="age" min="1" max="120" placeholder="E.g. 45" required>
+                </div>
 
-                <input
-                    type="number"
-                    name="age"
-                    placeholder="Patient Age"
-                    required
-                >
+                <!-- DIABETES STATUS -->
+                <div class="form-group">
+                    <label for="diabetes">Diabetes Status</label>
+                    <select id="diabetes" name="diabetes">
+                        <option value="No">Non-Diabetic</option>
+                        <option value="Yes">Diabetic</option>
+                    </select>
+                </div>
 
-            </div>
+                <!-- BLOOD PRESSURE -->
+                <div class="form-group">
+                    <label for="blood_pressure">Blood Pressure</label>
+                    <select id="blood_pressure" name="blood_pressure">
+                        <option value="Normal">Normal BP</option>
+                        <option value="High">Hypertensive (High BP)</option>
+                    </select>
+                </div>
 
-            <!-- DIABETES -->
+                <!-- SMOKING STATUS -->
+                <div class="form-group">
+                    <label for="smoking">Smoking Status</label>
+                    <select id="smoking" name="smoking">
+                        <option value="No">Non-Smoker</option>
+                        <option value="Yes">Active Smoker</option>
+                    </select>
+                </div>
 
-            <div class="form-group">
-
-                <select name="diabetes">
-
-                    <option value="No">
-                        Diabetes: No
-                    </option>
-
-                    <option value="Yes">
-                        Diabetes: Yes
-                    </option>
-
-                </select>
-
-            </div>
-
-            <!-- BP -->
-
-            <div class="form-group">
-
-                <select name="blood_pressure">
-
-                    <option value="Normal">
-                        Blood Pressure: Normal
-                    </option>
-
-                    <option value="High">
-                        Blood Pressure: High
-                    </option>
-
-                </select>
-
-            </div>
-
-            <!-- SMOKING -->
-
-            <div class="form-group">
-
-                <select name="smoking">
-
-                    <option value="No">
-                        Smoking: No
-                    </option>
-
-                    <option value="Yes">
-                        Smoking: Yes
-                    </option>
-
-                </select>
-
-            </div>
-
-            <!-- IMAGE -->
-
-            <div class="form-group">
-
-                <input
-                    type="file"
-                    name="image"
-                    accept=".jpg,.jpeg,.png"
-                    required
-                >
-
+                <!-- RETINAL SCAN UPLOAD -->
+                <div class="form-group">
+                    <label>Retinal Fundus Image</label>
+                    <div class="upload-dropzone" onclick="document.getElementById('image-upload').click()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span id="upload-label" style="font-weight: 500;">Click to select or drop image here</span>
+                        <span style="font-size: 0.75rem; color: var(--color-text-muted);">Supports JPG, JPEG, PNG</span>
+                        <input type="file" id="image-upload" name="image" accept=".jpg,.jpeg,.png" required onchange="handleFileSelect(this)">
+                    </div>
+                </div>
             </div>
 
             <!-- ANALYZE BUTTON -->
-
-            <button type="submit"
-                    class="btn btn-blue">
-
-                🔍 Analyze Uploaded Retina
-
+            <button type="submit" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Run AI Diagnosis & Analysis
             </button>
-
         </form>
 
-        <!-- LIVE CAMERA -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+            <!-- CAMERA PORTAL -->
+            <a href="/camera" class="btn btn-success">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Launch Webcam Screening
+            </a>
 
-        <br><br>
-
-        <a href="/camera"
-           class="btn btn-green">
-
-           📷 Use Live Camera Screening
-
-        </a>
-
-        <!-- REPORTS -->
-
-        <br>
-
-        <a href="/reports"
-           class="btn btn-dark">
-
-           📚 View Patient Reports
-
-        </a>
-
+            <!-- ARCHIVES -->
+            <a href="/reports" class="btn btn-secondary" style="margin-top: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                Patient Report Archives
+            </a>
+        </div>
     </div>
 
-    <!-- RIGHT SIDE -->
+    <!-- RIGHT PANEL: MEDICAL KNOWLEDGE BASE -->
+    <div class="assistant-card glass-panel">
+        <div class="assistant-header">
+            <div class="assistant-avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <div>
+                <h2 class="assistant-title">AI Diagnostics Engine</h2>
+                <p class="assistant-sub">Clinical Decision Support Assistant</p>
+            </div>
+        </div>
 
-    <div class="assistant-card">
-
-        <h2 class="assistant-title">
-
-            🤖 NutriEye Assistant
-
-        </h2>
-
-        <p class="assistant-sub">
-
-            AI healthcare support assistant for:
-            retinal disease awareness,
-            nutrition guidance,
-            yoga suggestions,
-            precautions,
-            and clinical understanding.
-
-        </p>
-
-        <!-- QUESTIONS -->
-
-        <div class="assistant-box">
-
-            <h3>💬 Ask Things Like:</h3>
-
+        <div class="assistant-info-panel">
+            <h3>💬 Diagnostic Inquiries</h3>
             <ul>
-
-                <li>What is glaucoma?</li>
-
-                <li>Can diabetic retinopathy be treated?</li>
-
-                <li>Which foods improve eye health?</li>
-
-                <li>What precautions should I take?</li>
-
+                <li>"What is Glaucoma and its primary risk factors?"</li>
+                <li>"Explain the stages of Diabetic Retinopathy."</li>
+                <li>"Which nutrients reduce risks of Cataracts?"</li>
+                <li>"What precautions should high BP patients take?"</li>
             </ul>
-
         </div>
 
-        <!-- FEATURES -->
-
-        <div class="assistant-box">
-
-            <h3>🔥 Features Included</h3>
-
+        <div class="assistant-info-panel">
+            <h3>🔬 Deep Learning Specifics</h3>
             <ul>
-
-                <li>AI Multi-Class Retinal Detection</li>
-
-                <li>Grad-CAM Explainability</li>
-
-                <li>Clinical Confidence Scoring</li>
-
-                <li>Personalized Health Guidance</li>
-
-                <li>Blockchain-secured Reports</li>
-
-                <li>Patient Risk Profiling</li>
-
-                <li>PDF AI Medical Reports</li>
-
-                <li>Nearby Eye Hospital Locator</li>
-
-                <li>SHA-256 Blockchain Verification</li>
-
-                <li>Clinical Decision Support</li>
-
+                <li>MobileNetV2 Transfer Learning Architecture</li>
+                <li>95%+ validation accuracy on clinical samples</li>
+                <li>Explainable AI (XAI) using Grad-CAM heatmaps</li>
+                <li>Blockchain verification using SHA-256 signatures</li>
             </ul>
-
         </div>
 
-        <!-- PERFORMANCE -->
-
-        <div class="assistant-box">
-
-            <h3>📈 AI Model Performance</h3>
-
-            <ul>
-
-                <li>Model Accuracy: 95%+</li>
-
-                <li>Transfer Learning CNN Model</li>
-
-                <li>Multi-Class Retina Detection</li>
-
-                <li>Explainable AI with Grad-CAM</li>
-
-                <li>Clinical Decision Support System</li>
-
-            </ul>
-
-        </div>
-
-        <!-- DATASET -->
-
-        <div class="assistant-box">
-
-            <h3>🗂 Dataset Information</h3>
-
-            <p>
-
-                NutriEye was trained on retinal
-                fundus datasets containing
-                Cataract,
-                Glaucoma,
-                Diabetic Retinopathy,
-                and Normal retina scans.
-
+        <div class="assistant-info-panel">
+            <h3>⚠️ Clinical Note</h3>
+            <p style="font-size: 0.85rem; color: var(--color-text-secondary); line-height: 1.6;">
+                NutriEye is an educational screening support system. It is designed to assist clinicians by flagging anomalies and should not replace professional diagnosis by an ophthalmologist.
             </p>
-
         </div>
-
-        <!-- BLOCKCHAIN -->
-
-        <div class="assistant-box">
-
-            <h3>⛓ Blockchain Security</h3>
-
-            <p>
-
-                NutriEye secures AI-generated
-                medical reports using
-                SHA-256 blockchain-style hashing
-                for tamper detection and
-                integrity verification.
-
-            </p>
-
-        </div>
-
-        <!-- RESEARCH -->
-
-        <div class="assistant-box">
-
-            <h3>📚 Research Contribution</h3>
-
-            <p>
-
-                NutriEye integrates
-                Explainable AI,
-                healthcare recommendation systems,
-                blockchain verification,
-                Grad-CAM visual interpretability,
-                and clinical decision support
-                into a unified retinal analysis platform.
-
-            </p>
-
-        </div>
-
-        <!-- DISCLAIMER -->
-
-        <div class="assistant-box">
-
-            <h3>⚠ Medical Note</h3>
-
-            <p>
-
-                NutriEye is an AI-based educational
-                support system and should not replace
-                professional ophthalmologist diagnosis.
-
-            </p>
-
-        </div>
-
-        <p class="note">
-
-            Tip:
-            Upload retina image →
-            get AI prediction →
-            view Grad-CAM →
-            download medical report →
-            consult specialist.
-
-        </p>
-
     </div>
-
 </div>
 
-<!-- AI ASSISTANT -->
+<!-- DIAGNOSTIC SCANNING LOADER -->
+<div id="loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(9, 13, 22, 0.9); z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:20px;">
+    <div style="position:relative; width:120px; height:120px;">
+        <div style="position:absolute; top:0; left:0; width:100%; height:100%; border-radius:50%; border:3px solid rgba(6, 182, 212, 0.1); border-top-color:var(--color-primary); animation:spin 1s infinite linear;"></div>
+        <div style="position:absolute; top:15px; left:15px; width:90px; height:90px; border-radius:50%; border:2px dashed rgba(16, 185, 129, 0.2); border-bottom-color:var(--color-success); animation:spin 1.5s infinite linear reverse;"></div>
+        <div style="position:absolute; top:35px; left:35px; width:50px; height:50px; border-radius:50%; background:rgba(6, 182, 212, 0.1); display:flex; align-items:center; justify-content:center; color:var(--color-primary);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+        </div>
+    </div>
+    <div style="text-align:center;">
+        <h2 style="font-size:1.5rem; margin-bottom:8px; font-family:var(--font-mono); color:#fff; letter-spacing:0.05em;">AI Scanning & Analysis Active</h2>
+        <p style="font-size:0.9rem; color:var(--color-text-secondary);">Generating diagnostic predictions and Grad-CAM explainability maps...</p>
+    </div>
+</div>
 
-<script
-id="omnidimension-web-widget"
-async
-src="https://omnidim.io/web_widget.js?secret_key=718fd696fde0af998e4c565f463d8fa6">
-</script>
+<style>
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
 
-<!-- LOADING ALERT -->
-
+<!-- DRAG & DROP FILE SELECTION HANDLER -->
 <script>
-
-document.querySelector("form").addEventListener(
-    "submit",
-    function(){
-
-        alert(
-            "AI retinal analysis is processing..."
-        );
-
+function handleFileSelect(input) {
+    const label = document.getElementById('upload-label');
+    if (input.files && input.files.length > 0) {
+        label.innerText = "Selected: " + input.files[0].name;
+        label.classList.add('file-selected-info');
+    } else {
+        label.innerText = "Click to select or drop image here";
+        label.classList.remove('file-selected-info');
     }
-);
+}
 
+// SETUP DRAG & DROP
+const dropzone = document.querySelector('.upload-dropzone');
+const fileInput = document.getElementById('image-upload');
+
+['dragenter', 'dragover'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'var(--color-primary)';
+        dropzone.style.background = 'rgba(6, 182, 212, 0.05)';
+    }, false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = '';
+        dropzone.style.background = '';
+    }, false);
+});
+
+dropzone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    fileInput.files = files;
+    handleFileSelect(fileInput);
+}, false);
+
+// SHOW LOADING LOADER ON FORM SUBMISSION
+document.getElementById('analysis-form').addEventListener('submit', function() {
+    document.getElementById('loading-overlay').style.display = 'flex';
+});
 </script>
 
-<!-- FOOTER -->
-
-<footer>
-
-    NutriEye © 2026 |
-    AI-Based Retinal Disease Detection &
-    Clinical Decision Support System
-
-</footer>
+<!-- AI ASSISTANT WEB WIDGET -->
+<script id="omnidimension-web-widget" async src="https://omnidim.io/web_widget.js?secret_key=718fd696fde0af998e4c565f463d8fa6"></script>
 
 </body>
 </html>

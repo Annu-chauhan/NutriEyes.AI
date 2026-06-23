@@ -1,573 +1,338 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>NutriEye Result</title>
-
-    <style>
-
-        body{
-            margin:0;
-            font-family:Arial,sans-serif;
-            background:#eef3fb;
-        }
-
-        .container{
-            max-width:1100px;
-            margin:40px auto;
-            background:#f8f9fb;
-            border-radius:30px;
-            padding:50px;
-            box-shadow:0 10px 30px rgba(0,0,0,0.08);
-        }
-
-        h1{
-            text-align:center;
-            font-size:56px;
-            color:#243b63;
-        }
-
-        .image-box{
-            text-align:center;
-            margin-top:30px;
-        }
-
-        .image-box img{
-            width:320px;
-            border-radius:20px;
-            box-shadow:0 0 25px rgba(0,255,0,0.5);
-        }
-
-        .result{
-            text-align:center;
-            margin-top:30px;
-        }
-
-        .result h2{
-            font-size:38px;
-            color:#1e3a8a;
-        }
-
-        .result span{
-            color:#ef4444;
-        }
-
-        .confidence{
-            font-size:22px;
-            color:#475569;
-            margin-top:10px;
-        }
-
-        .confidence-bar{
-            width:100%;
-            background:#d1d5db;
-            border-radius:20px;
-            margin-top:20px;
-            overflow:hidden;
-        }
-
-        .confidence-fill{
-            height:35px;
-            background:#22c55e;
-            text-align:center;
-            line-height:35px;
-            color:white;
-            font-weight:bold;
-        }
-
-        .card{
-            margin-top:25px;
-            padding:22px;
-            border-radius:18px;
-            background:#eef2ff;
-        }
-
-        .card h3{
-            margin-top:0;
-            color:#1e3a8a;
-        }
-
-        ul{
-            padding-left:20px;
-        }
-
-        li{
-            margin-bottom:8px;
-        }
-
-        .btn{
-            display:inline-block;
-            margin-top:20px;
-            padding:14px 28px;
-            border-radius:12px;
-            text-decoration:none;
-            color:white;
-            font-weight:bold;
-            margin-right:12px;
-        }
-
-        .blue{
-            background:#2563eb;
-        }
-
-        .green{
-            background:#16a34a;
-        }
-
-        .purple{
-            background:#7c3aed;
-        }
-
-        iframe{
-            border-radius:18px;
-        }
-
-        .warning-box{
-            background:#fff7ed;
-            padding:18px;
-            border-radius:14px;
-            margin-top:20px;
-            color:#9a3412;
-            font-weight:bold;
-            border-left:6px solid orange;
-        }
-
-        .gradcam-img{
-            width:450px;
-            border-radius:20px;
-            border:4px solid white;
-            box-shadow:0 0 20px rgba(0,0,0,0.25);
-        }
-
-    </style>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - Diagnostic Analysis Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-
 <body>
 
-<div class="container">
+<div class="container animate-fade-in" style="grid-template-columns: 1.5fr 1fr; max-width: 1250px;">
+    <!-- LEFT PANEL: DIAGNOSTIC DASHBOARD -->
+    <div class="main-card glass-panel" style="padding: 40px;">
+        <!-- CLINICIAN HEADER -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:24px;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:0.9rem; color:var(--color-text-secondary);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color:var(--color-primary);">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span>Active Clinician: <strong style="color:var(--color-text-primary);">{{ current_user.username }}</strong></span>
+            </div>
+            <a href="/logout" style="font-size:0.85rem; color:var(--color-danger); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px;">
+                <span>Logout</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+            </a>
+        </div>
 
-    <h1>NutriEye Analysis Result</h1>
+        <!-- FLASHED ALERTS -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-    <!-- IMAGE -->
+        <div class="result-header-panel">
+            <div class="diagnosis-label">AI Diagnostic Screening Complete</div>
+            <h2 class="diagnosis-value">
+                Predicted: 
+                {% if prediction == "Normal" %}
+                <span class="prediction-normal">{{ prediction }}</span>
+                {% else %}
+                <span class="prediction-abnormal">{{ prediction }}</span>
+                {% endif %}
+            </h2>
+            
+            <!-- Risk Badge -->
+            <div>
+                {% if "High" in risk_level %}
+                <span class="badge-risk high">⚠️ Patient Profile: {{ risk_level }}</span>
+                {% else %}
+                <span class="badge-risk low">🛡️ Patient Profile: {{ risk_level }}</span>
+                {% endif %}
+            </div>
+        </div>
 
-    <div class="image-box">
+        <!-- VISUAL COMPARE SECTION -->
+        <div class="image-compare-box">
+            <div class="image-card">
+                <h4>Original Retinal Scan</h4>
+                <img src="{{ uploaded_image }}" alt="Uploaded Retina">
+            </div>
+            
+            <div class="image-card gradcam">
+                <h4>Explainable AI (Grad-CAM Map)</h4>
+                {% if gradcam_image %}
+                <!-- Append version query string to prevent browser caching of gradcam image -->
+                <img src="{{ gradcam_image }}?v={{ confidence }}" alt="Grad-CAM Visualization">
+                {% else %}
+                <div style="width: 100%; max-width: 280px; aspect-ratio: 1; border-radius: 14px; background: rgba(239, 68, 68, 0.04); border: 1.5px dashed rgba(239, 68, 68, 0.25); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; gap: 8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="color:var(--color-danger);" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span style="font-size: 0.85rem; color: var(--color-danger); font-weight:600;">Grad-CAM Map Unavailable</span>
+                    <span style="font-size: 0.75rem; color: var(--color-text-muted);">Requires standard Keras MobileNet layers.</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
 
-        <img
-            src="{{ uploaded_image }}"
-            alt="Uploaded Retina"
-        >
-
-    </div>
-
-    <!-- RESULT -->
-
-    <div class="result">
-
-        <h2>
-
-            Predicted Result:
-
-            <span>{{ prediction }}</span>
-
-        </h2>
-
-        <p class="confidence">
-
-            Confidence:
-
-            <strong>{{ confidence }}%</strong>
-
-        </p>
-
-        <!-- CONFIDENCE BAR -->
-
-        <div class="confidence-bar">
-
-            <div
-                class="confidence-fill"
-                style="width: {{ confidence }}%;"
-            >
-
-                {{ confidence }}%
-
+        <!-- RECOMENDATION TABS SECTION -->
+        <div class="clinical-report-tabs">
+            <div class="tabs-navigation">
+                <button type="button" class="tab-btn active" onclick="switchTab(event, 'explanation-tab')">Disease Explanation</button>
+                <button type="button" class="tab-btn" onclick="switchTab(event, 'diet-tab')">Dietary Care</button>
+                <button type="button" class="tab-btn" onclick="switchTab(event, 'exercise-tab')">Therapeutic Activity</button>
+                <button type="button" class="tab-btn" onclick="switchTab(event, 'precautions-tab')">Precautions</button>
             </div>
 
+            <!-- TAB PANELS -->
+            <!-- 1. Explanation -->
+            <div id="explanation-tab" class="tab-panel active">
+                <div class="tab-content-card">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h0a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        Clinical Summary
+                    </h3>
+                    <p>{{ recommendation.description }}</p>
+                </div>
+            </div>
+
+            <!-- 2. Diet -->
+            <div id="diet-tab" class="tab-panel">
+                <div class="tab-content-card">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                        </svg>
+                        Targeted Nutritional Protocol
+                    </h3>
+                    <p style="margin-bottom: 12px;">Integrating these foods supports microvascular circulation and retinal cell integrity:</p>
+                    <ul>
+                        {% for item in recommendation.diet %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 3. Exercise & Yoga -->
+            <div id="exercise-tab" class="tab-panel">
+                <div class="tab-content-card">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Exercises & Yoga Poses
+                    </h3>
+                    <p style="margin-bottom: 12px;">Physical exercise enhances cardiovascular perfusion, while eye exercises help relieve ocular stress:</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h4 style="font-size:0.9rem; color:var(--color-primary); margin-bottom:8px;">🏃 Aerobic Activity</h4>
+                            <ul style="grid-template-columns: 1fr; margin-top: 0;">
+                                {% for item in recommendation.exercise %}
+                                <li>{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="font-size:0.9rem; color:var(--color-warning); margin-bottom:8px;">🧘 Ocular Yoga</h4>
+                            <ul style="grid-template-columns: 1fr; margin-top: 0;">
+                                {% for item in recommendation.yoga %}
+                                <li>{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Precautions -->
+            <div id="precautions-tab" class="tab-panel">
+                <div class="tab-content-card" style="border-color: rgba(244,63,94,0.2);">
+                    <h3 style="color: var(--color-danger);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Precautions & Contraindications
+                    </h3>
+                    <p style="margin-bottom: 12px; color: var(--color-text-secondary);">Strict adherence to these rules prevents progressive ocular degradation:</p>
+                    <ul style="grid-template-columns: 1fr;">
+                        {% for item in recommendation.precautions %}
+                        <li style="border-color: rgba(244,63,94,0.1); background: rgba(244,63,94,0.02);">{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
         </div>
 
-        <!-- LOW CONFIDENCE WARNING -->
+        <!-- BLOCKCHAIN INTEGRITY FOOTER -->
+        <div class="blockchain-verification-card">
+            <div class="blockchain-details">
+                <h4>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Blockchain Report Verification
+                </h4>
+                <p>This diagnosis has been finalized and signed with a cryptographic SHA-256 integrity hash.</p>
+                <div class="blockchain-hash-value">{{ hash_value }}</div>
+            </div>
+            <div class="blockchain-badge">Verified Signed</div>
+        </div>
 
+        <!-- GOOGLE MAPS LOCATOR -->
+        <div class="hospital-map-card">
+            <h3 style="display:flex; align-items:center; gap:8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Ophthalmic Referral Network
+            </h3>
+            <iframe
+                src="https://www.google.com/maps?q=eye+hospital+near+me&output=embed"
+                width="100%"
+                height="350"
+                style="border:0;"
+                allowfullscreen=""
+                loading="lazy">
+            </iframe>
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL: CLINICAL SUMMARY METRICS -->
+    <div class="assistant-card glass-panel">
+        <div class="assistant-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 20px;">
+            <div class="assistant-avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                </svg>
+            </div>
+            <div>
+                <h2 class="assistant-title">AI Diagnostics</h2>
+                <p class="assistant-sub">Confidence & Probability Scores</p>
+            </div>
+        </div>
+
+        <!-- Confidence gauge circle -->
+        <div class="confidence-gauge-wrapper">
+            <div class="circular-gauge">
+                <svg viewBox="0 0 100 100">
+                    <circle class="bg-ring" cx="50" cy="50" r="42"></circle>
+                    <circle class="fill-ring" id="confidence-circle" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"></circle>
+                </svg>
+                <div class="percentage-text" style="color:var(--color-primary);">{{ confidence }}%</div>
+            </div>
+            <div class="gauge-description">
+                <h4>Ocular Confidence</h4>
+                <p>Accuracy probability of primary classification output.</p>
+            </div>
+        </div>
+
+        <!-- Warning for low confidence -->
         {% if confidence < 85 %}
-
-        <div class="warning-box">
-
-            ⚠ Low reliability prediction.
-
-            Use proper retinal fundus image
-            for accurate diagnosis.
-
+        <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.2); border-radius:16px; padding:16px; font-size:0.85rem; color:var(--color-warning);">
+            ⚠️ <strong>Notice: Low Confidence ({{ confidence }}%)</strong><br>
+            The prediction confidence is below recommended threshold. Ensure images are taken with professional fundus camera lenses.
         </div>
-
         {% endif %}
 
-    </div>
-
-    <!-- RISK -->
-
-    <div class="card"
-         style="background:#fee2e2;">
-
-        <h3>🧠 Patient Risk Assessment</h3>
-
-        <p>
-
-            <strong>{{ risk_level }}</strong>
-
-        </p>
-
-    </div>
-
-    <!-- TOP PREDICTIONS -->
-
-    <div class="card">
-
-        <h3>📊 Top-2 Predictions</h3>
-
-        <ul>
-
-            {% for pred in top2_predictions %}
-
-            <li>
-
-                <strong>{{ pred.disease }}</strong>
-
-                —
-
-                {{ pred.confidence }}%
-
-            </li>
-
-            {% endfor %}
-
-        </ul>
-
-    </div>
-
-    <!-- HEALTH STATUS -->
-
-    <div class="card">
-
-        <h3>🩺 Eye Health Status</h3>
-
-        <p>
-
-            {% if prediction == "Normal" %}
-
-                Healthy retinal pattern detected.
-
-            {% else %}
-
-                Possible retinal abnormality detected.
-
-            {% endif %}
-
-        </p>
-
-    </div>
-
-    <!-- DESCRIPTION -->
-
-    <div class="card"
-         style="background:#fff7ed;">
-
-        <h3>📘 Disease Explanation</h3>
-
-        <p>
-
-            {{ recommendation.description }}
-
-        </p>
-
-    </div>
-
-    <!-- DIET -->
-
-    <div class="card"
-         style="background:#ecfdf5;">
-
-        <h3>🥗 Recommended Diet</h3>
-
-        <ul>
-
-            {% for item in recommendation.diet %}
-
-            <li>{{ item }}</li>
-
-            {% endfor %}
-
-        </ul>
-
-    </div>
-
-    <!-- EXERCISE -->
-
-    <div class="card"
-         style="background:#f0fdf4;">
-
-        <h3>🏃 Recommended Exercise</h3>
-
-        <ul>
-
-            {% for item in recommendation.exercise %}
-
-            <li>{{ item }}</li>
-
-            {% endfor %}
-
-        </ul>
-
-    </div>
-
-    <!-- YOGA -->
-
-    <div class="card"
-         style="background:#fef9c3;">
-
-        <h3>🧘 Recommended Yoga</h3>
-
-        <ul>
-
-            {% for item in recommendation.yoga %}
-
-            <li>{{ item }}</li>
-
-            {% endfor %}
-
-        </ul>
-
-    </div>
-
-    <!-- PRECAUTIONS -->
-
-    <div class="card"
-         style="background:#fee2e2;">
-
-        <h3>⚠ Precautions</h3>
-
-        <ul>
-
-            {% for item in recommendation.precautions %}
-
-            <li>{{ item }}</li>
-
-            {% endfor %}
-
-        </ul>
-
-    </div>
-
-    <!-- DOCTOR -->
-
-    <div class="card"
-         style="background:#e0f2fe;">
-
-        <h3>👨‍⚕ Doctor Recommendation</h3>
-
-        <p>
-
-            {{ recommendation.doctor }}
-
-        </p>
-
-    </div>
-
-    <!-- GRAD-CAM -->
-
-    <div class="card"
-         style="background:#ede9fe;">
-
-        <h3>🔥 Grad-CAM Explainability</h3>
-
-        <p>
-
-            Highlighted retinal regions influencing
-            the AI prediction.
-
-        </p>
-
-        {% if gradcam_image %}
-
-        <div
-            style="
-                text-align:center;
-                margin-top:20px;
-            "
-        >
-
-            <img
-
-                src="{{ gradcam_image }}?v={{ confidence }}"
-
-                alt="GradCAM"
-
-                class="gradcam-img"
-            >
-
+        <!-- Probability Lists -->
+        <div class="assistant-info-panel" style="padding-bottom: 24px;">
+            <h3>📊 Probability Profile</h3>
+            <div class="prediction-probabilities">
+                {% for pred in top2_predictions %}
+                <div class="probability-bar-group">
+                    <div class="probability-labels">
+                        <span style="color:var(--color-text-primary); font-weight: 600;">{{ pred.disease }}</span>
+                        <span style="font-family:var(--font-mono); color:var(--color-primary);">{{ pred.confidence }}%</span>
+                    </div>
+                    <div class="probability-bar-bg">
+                        <div class="probability-bar-fill" style="width: 0%;" data-width="{{ pred.confidence }}"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
 
-        {% else %}
+        <!-- Doctor recommendation text -->
+        <div class="assistant-info-panel" style="border-color: rgba(6,182,212,0.15); background: rgba(6,182,212,0.02);">
+            <h3 style="color: var(--color-primary);">👨‍⚕️ Ophthalmic Advisory</h3>
+            <p style="font-size: 0.9rem; line-height: 1.6; color: var(--color-text-primary);">
+                {{ recommendation.doctor }}
+            </p>
+        </div>
 
-        <p
-            style="
-                color:red;
-                font-weight:bold;
-            "
-        >
+        <!-- Action buttons in right panel -->
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:12px;">
+            <a href="{{ pdf_report }}" download class="btn btn-success">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download PDF Medical Report
+            </a>
 
-            Grad-CAM visualization unavailable.
-
-        </p>
-
-        {% endif %}
-
+            <a href="/" class="btn btn-secondary" style="margin-top:0;">
+                🔄 Run Another Diagnosis
+            </a>
+            
+            <a href="/reports" class="btn btn-secondary" style="margin-top:0; border-color:transparent;">
+                📚 View Historical Archive
+            </a>
+        </div>
     </div>
-
-    <!-- MAP -->
-
-    <div class="card">
-
-        <h3>📍 Nearby Eye Hospitals</h3>
-
-        <iframe
-            src="https://www.google.com/maps?q=eye+hospital+near+me&output=embed"
-            width="100%"
-            height="350"
-            style="border:0;"
-            allowfullscreen=""
-            loading="lazy">
-
-        </iframe>
-
-    </div>
-
-    <!-- AI INSIGHT -->
-
-    <div class="card"
-         style="
-            background:#111827;
-            color:white;
-         ">
-
-        <h3>🤖 AI Medical Insight</h3>
-
-        <p>
-
-            The AI model predicts
-
-            <strong>{{ prediction }}</strong>
-
-            with
-
-            <strong>{{ confidence }}%</strong>
-
-            confidence.
-
-            Please consult an ophthalmologist
-            for professional medical confirmation.
-
-        </p>
-
-    </div>
-
-    <!-- BLOCKCHAIN -->
-
-    <div class="card"
-         style="background:#f1f5f9;">
-
-        <h3>⛓ Blockchain Security Verification</h3>
-
-        <p>
-
-            This AI medical report has been secured
-            using SHA-256 blockchain-style hashing
-            for integrity verification.
-
-        </p>
-
-        <p>
-
-            <strong>Status:</strong>
-
-            <span style="color:green;">
-                ✔ Verified & Tamper Protected
-            </span>
-
-        </p>
-
-        <p
-            style="
-                word-break:break-all;
-                font-size:14px;
-                margin-top:15px;
-            "
-        >
-
-            <strong>Hash:</strong><br>
-
-            {{ hash_value }}
-
-        </p>
-
-    </div>
-
-    <!-- BUTTONS -->
-
-    <div style="text-align:center;">
-
-        <a
-            href="{{ pdf_report }}"
-            download
-            class="btn green"
-        >
-
-            📄 Download AI Report
-
-        </a>
-
-        <a
-            href="/reports"
-            class="btn purple"
-        >
-
-            📚 Report History
-
-        </a>
-
-        <a
-            href="/"
-            class="btn blue"
-        >
-
-            ⬅ Back to Upload
-
-        </a>
-
-    </div>
-
 </div>
 
-<!-- AI ASSISTANT -->
+<!-- JAVASCRIPT ANIMATIONS & TAB SWITCHING -->
+<script>
+// Tab Switching
+function switchTab(evt, tabId) {
+    const tabPanels = document.getElementsByClassName("tab-panel");
+    for (let i = 0; i < tabPanels.length; i++) {
+        tabPanels[i].classList.remove("active");
+    }
+    
+    const tabButtons = document.getElementsByClassName("tab-btn");
+    for (let i = 0; i < tabButtons.length; i++) {
+        tabButtons[i].classList.remove("active");
+    }
+    
+    document.getElementById(tabId).classList.add("active");
+    evt.currentTarget.classList.add("active");
+}
 
-<script
-id="omnidimension-web-widget"
-async
-src="https://omnidim.io/web_widget.js?secret_key=718fd696fde0af998e4c565f463d8fa6">
+// Circle Gauge Animation
+window.addEventListener('DOMContentLoaded', () => {
+    const confidence = parseFloat("{{ confidence }}");
+    const circle = document.getElementById('confidence-circle');
+    
+    // Circunference = 2 * PI * r = 2 * 3.14159 * 42 = 263.89
+    const circumference = 264;
+    const offset = circumference - (confidence / 100) * circumference;
+    
+    // Delay slightly for smooth entering animation
+    setTimeout(() => {
+        circle.style.strokeDashoffset = offset;
+    }, 200);
+
+    // Probability Bars Animation
+    const bars = document.querySelectorAll('.probability-bar-fill');
+    bars.forEach(bar => {
+        const targetWidth = bar.getAttribute('data-width') + "%";
+        setTimeout(() => {
+            bar.style.width = targetWidth;
+        }, 400);
+    });
+});
 </script>
 
 </body>
