@@ -42,6 +42,14 @@ from utils.camera import (
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "nutrieye_clinical_secret_key_2026")
 
+if "SPACE_ID" in os.environ:
+    app.config.update(
+        SESSION_COOKIE_SAMESITE="None",
+        SESSION_COOKIE_SECURE=True
+    )
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
 # =========================
 # UPLOAD CONFIG
 # =========================
