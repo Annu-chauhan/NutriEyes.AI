@@ -5,6 +5,8 @@ import secrets
 import logging
 import jwt
 from functools import wraps
+from flasgger import Swagger
+
 
 from flask import (
     Flask,
@@ -60,6 +62,34 @@ if "SPACE_ID" in os.environ:
 
 # Initialize CORS
 CORS(app, supports_credentials=True)
+
+# Initialize Swagger API Documentation
+swagger = Swagger(app, template={
+    "swagger": "2.0",
+    "info": {
+        "title": "NutriEye AI Diagnostics & Security API",
+        "description": "Interactive API Documentation for the NutriEye clinician authentication portal, disease screening models, and patient report systems.",
+        "version": "2.5.0",
+        "contact": {
+            "name": "Clinical AI Support",
+            "email": "support@nutrieye.ai"
+        }
+    },
+    "securityDefinitions": {
+        "AccessCookie": {
+            "type": "apiKey",
+            "name": "access_token",
+            "in": "cookie",
+            "description": "JWT Access Token stored in HttpOnly cookies."
+        },
+        "RefreshCookie": {
+            "type": "apiKey",
+            "name": "refresh_token",
+            "in": "cookie",
+            "description": "JWT Refresh Token stored in HttpOnly cookies."
+        }
+    }
+})
 
 # Initialize Rate Limiter
 limiter = Limiter(
@@ -373,10 +403,48 @@ def send_reset_email(to_email, reset_link):
 @app.route("/register", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def register():
+    """
+    Register a new clinician account
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: username
+        in: formData
+        type: string
+        required: true
+        description: Clinician full name (e.g. Dr. Watson)
+      - name: email
+        in: formData
+        type: string
+        required: true
+        description: Unique email address
+      - name: password
+        in: formData
+        type: string
+        required: true
+        description: Account password (minimum 8 characters)
+      - name: role
+        in: formData
+        type: string
+        required: true
+        enum: [doctor, admin, patient, researcher]
+        description: Access role for RBAC control
+    responses:
+      200:
+        description: Renders the registration HTML form (GET).
+      302:
+        description: Redirects to /login on successful registration.
+      400:
+        description: Validation mismatch or missing fields.
+      429:
+        description: Rate limit exceeded (max 5 requests per minute).
+    """
     if g.user:
         return redirect(url_for("home"))
         
     if request.method == "POST":
+
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
@@ -451,10 +519,37 @@ def verify_email(token):
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def login():
+    """
+    Clinician authentication portal
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: email
+        in: formData
+        type: string
+        required: true
+        description: Clinician registered email
+      - name: password
+        in: formData
+        type: string
+        required: true
+        description: Account password
+    responses:
+      200:
+        description: Renders login HTML form or returns error (e.g. locked account).
+      302:
+        description: Sets JWT cookies and redirects to dashboard on success.
+      401:
+        description: Invalid credentials or account lockout trigger.
+      429:
+        description: Rate limit exceeded.
+    """
     if g.user:
         return redirect(url_for("home"))
         
     if request.method == "POST":
+
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
         
@@ -529,7 +624,25 @@ def login():
 @app.route("/forgot-password", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def forgot_password():
+    """
+    Initiate clinician password recovery
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: email
+        in: formData
+        type: string
+        required: true
+        description: Registered clinician email address
+    responses:
+      200:
+        description: Sends link (Production Mode) or flashes link on screen (Demo Mode).
+      429:
+        description: Rate limit exceeded.
+    """
     if request.method == "POST":
+
         email = request.form.get("email", "").strip()
         if not email:
             flash("Email is required.", "danger")
@@ -668,7 +781,60 @@ def reports():
 @roles_accepted("admin", "doctor", "researcher")
 @limiter.limit("10 per minute")
 def predict():
+    """
+    Analyze retinal fundus scan using AI
+    ---
+    tags:
+      - AI Diagnosis
+    security:
+      - AccessCookie: []
+      - RefreshCookie: []
+    parameters:
+      - name: patient_name
+        in: formData
+        type: string
+        required: true
+        description: Patient Name
+      - name: age
+        in: formData
+        type: integer
+        required: true
+        description: Patient Age
+      - name: diabetes
+        in: formData
+        type: string
+        enum: [Yes, No]
+        required: true
+        description: Diabetic status
+      - name: blood_pressure
+        in: formData
+        type: string
+        enum: [Normal, High]
+        required: true
+        description: Hypertension status
+      - name: smoking
+        in: formData
+        type: string
+        enum: [Yes, No]
+        required: true
+        description: Smoking status
+      - name: image
+        in: formData
+        type: file
+        required: true
+        description: Retinal fundus image scan (.jpg, .jpeg, .png, max 5MB)
+    responses:
+      200:
+        description: Returns result page displaying diagnostic result, confidence score, and Grad-CAM heatmap.
+      302:
+        description: Redirects to home page on validation errors.
+      403:
+        description: Forbidden (insufficient RBAC permissions).
+      429:
+        description: Rate limit exceeded (max 10 requests per minute).
+    """
     patient_name = request.form.get("patient_name", "Unknown").strip()
+
     age_str = request.form.get("age", "0").strip()
     diabetes = request.form.get("diabetes", "No").strip()
     blood_pressure = request.form.get("blood_pressure", "Normal").strip()
@@ -763,8 +929,53 @@ def predict():
     )
 
 # =========================
+# HEALTH CHECK ROUTE
+# =========================
+
+@app.route("/health")
+@limiter.exempt
+def health():
+    """
+    Service Health Status
+    ---
+    tags:
+      - Monitoring
+    responses:
+      200:
+        description: System is fully functional.
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: healthy
+            database:
+              type: string
+              example: connected
+            timestamp:
+              type: string
+              example: "2026-07-02T13:00:00Z"
+      500:
+        description: System database is disconnected or degraded.
+    """
+    db_ok = False
+    try:
+        db.session.execute(db.text("SELECT 1")).all()
+        db_ok = True
+    except Exception as e:
+        audit_logger.critical(f"Database health check failed: {str(e)}")
+        
+    status_code = 200 if db_ok else 500
+    return {
+        "status": "healthy" if db_ok else "unhealthy",
+        "database": "connected" if db_ok else "disconnected",
+        "timestamp": datetime.datetime.utcnow().isoformat() + "Z"
+    }, status_code
+
+# =========================
 # MAIN
 # =========================
 
 if __name__ == "__main__":
+
     app.run(debug=True, port=8000)

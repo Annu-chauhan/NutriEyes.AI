@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: nutrieye-app
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./instance:/app/instance
+      - ./static/uploads:/app/static/uploads
+      - ./logs:/app/logs
+    environment:
+      - FLASK_SECRET_KEY=production_secret_key_change_me
+      - PORT=7860
+    restart: always
