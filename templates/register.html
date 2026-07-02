@@ -28,6 +28,8 @@
     {% endwith %}
 
     <form action="/register" method="POST" style="display: flex; flex-direction: column; gap: 20px; text-align: left;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
         <div class="form-group">
             <label for="username">Clinician Name</label>
             <input type="text" id="username" name="username" placeholder="E.g. Dr. John Watson" required autocomplete="name">
@@ -36,6 +38,16 @@
         <div class="form-group">
             <label for="email">Clinician Email</label>
             <input type="email" id="email" name="email" placeholder="E.g. dr.john@hospital.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+            <label for="role">Assign Role</label>
+            <select id="role" name="role" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--color-text-primary); outline: none;">
+                <option value="doctor" selected>Doctor (Clinician)</option>
+                <option value="admin">Admin</option>
+                <option value="patient">Patient</option>
+                <option value="researcher">Researcher</option>
+            </select>
         </div>
 
         <div class="form-group">

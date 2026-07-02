@@ -60,18 +60,37 @@ class_labels = [
 # =========================
 
 def validate_retina_image(filepath):
-
     try:
+        # 1. Check file extension
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext not in [".jpg", ".jpeg", ".png"]:
+            return False, "Unsupported file extension. Only JPG, JPEG, and PNG are allowed."
 
+        # 2. Check file size (5 MB limit)
+        file_size = os.path.getsize(filepath)
+        if file_size > 5 * 1024 * 1024:
+            return False, "File size exceeds the 5 MB security limit."
+
+        # 3. Check magic bytes signature
+        with open(filepath, "rb") as f:
+            header = f.read(8)
+        
+        if ext in [".jpg", ".jpeg"]:
+            # JPEG start bytes: FF D8 FF
+            if not header.startswith(b"\xff\xd8\xff"):
+                return False, "Malformed JPEG: file signature mismatch."
+        elif ext == ".png":
+            # PNG start bytes: 89 50 4E 47 0D 0A 1A 0A
+            if not header.startswith(b"\x89PNG\r\n\x1a\n"):
+                return False, "Malformed PNG: file signature mismatch."
+
+        # 4. Verify image using PIL
         img = Image.open(filepath)
-
         img.verify()
-
         return True, "Valid image"
 
     except Exception as e:
-
-        return False, f"Invalid image: {str(e)}"
+        return False, f"Invalid image file: {str(e)}"
 
 # =========================
 # CONFIDENCE LEVEL

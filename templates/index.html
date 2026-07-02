@@ -19,12 +19,17 @@
                 </svg>
                 <span>Active Clinician: <strong style="color:var(--color-text-primary);">{{ current_user.username }}</strong></span>
             </div>
-            <a href="/logout" style="font-size:0.85rem; color:var(--color-danger); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px;">
-                <span>Logout</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-            </a>
+            <div style="display:flex; gap:16px; align-items:center;">
+                <a href="/logout-all" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600; text-decoration:none;">
+                    Logout All Devices
+                </a>
+                <a href="/logout" style="font-size:0.85rem; color:var(--color-danger); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px;">
+                    <span>Logout</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </a>
+            </div>
         </div>
 
         <!-- FLASHED ALERTS -->
@@ -55,8 +60,8 @@
             </div>
         </div>
 
-        <!-- DIAGNOSTIC INPUT FORM -->
         <form action="/predict" method="POST" enctype="multipart/form-data" id="analysis-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-grid">
                 <!-- PATIENT NAME -->
                 <div class="form-group">
