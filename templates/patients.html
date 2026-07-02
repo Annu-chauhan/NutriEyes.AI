@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - Patient Registry</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="container animate-fade-in" style="grid-template-columns: 1fr 1.5fr; max-width: 1200px;">
+    <!-- LEFT PANEL: REGISTER PATIENT -->
+    <div class="main-card glass-panel" style="padding: 40px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:16px; margin-bottom:24px;">
+            <a href="/" style="font-size:0.9rem; color:var(--color-primary); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:6px;">
+                <span>👁 Diagnostics Portal</span>
+            </a>
+            <a href="/dashboard" style="font-size:0.9rem; color:var(--color-text-secondary); font-weight:600; text-decoration:none;">
+                📊 Analytics
+            </a>
+        </div>
+
+        <div class="brand-section">
+            <h2 style="font-size: 1.8rem; font-weight: 700; color: var(--color-text-primary); margin: 0;">Register New Patient</h2>
+            <p class="subtitle">Enroll patient details in the clinical database</p>
+        </div>
+
+        <form action="/patients" method="POST" style="display: flex; flex-direction: column; gap: 20px; text-align: left; margin-top: 20px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+            <div class="form-group">
+                <label for="name">Patient Full Name</label>
+                <input type="text" id="name" name="name" placeholder="E.g. Jane Smith" required>
+            </div>
+
+            <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin:0;">
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" name="age" min="1" max="120" placeholder="E.g. 52" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="gender">Gender</label>
+                    <select id="gender" name="gender" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--color-text-primary); outline: none;">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other" selected>Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="diabetes">Diabetes Status</label>
+                <select id="diabetes" name="diabetes" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--color-text-primary); outline: none;">
+                    <option value="No" selected>Non-Diabetic</option>
+                    <option value="Yes">Diabetic</option>
+                </select>
+            </div>
+
+            <div class="form-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin:0;">
+                <div class="form-group">
+                    <label for="blood_pressure">Hypertension</label>
+                    <select id="blood_pressure" name="blood_pressure" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--color-text-primary); outline: none;">
+                        <option value="Normal" selected>Normal BP</option>
+                        <option value="High">High BP</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="smoking">Smoking</label>
+                    <select id="smoking" name="smoking" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--color-text-primary); outline: none;">
+                        <option value="No" selected>Nonsmoker</option>
+                        <option value="Yes">Smoker</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
+                Save Patient Profile
+            </button>
+        </form>
+    </div>
+
+    <!-- RIGHT PANEL: PATIENTS REGISTRY LIST -->
+    <div class="assistant-card glass-panel" style="padding: 40px; display:flex; flex-direction:column; gap:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h1 style="font-size: 2rem; font-weight: 700; color: var(--color-text-primary); margin:0;">Patient Registry</h1>
+            <span style="font-size: 0.85rem; padding: 4px 10px; border-radius: 20px; background: rgba(168,85,247,0.1); color: var(--color-primary); font-weight: 600;">
+                {{ patients|length }} Registered
+            </span>
+        </div>
+
+        <!-- SEARCH BAR -->
+        <form action="/patients" method="GET" style="display:flex; gap:10px;">
+            <input type="text" name="search" placeholder="Search patients by name..." value="{{ search_query }}" style="flex:1; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--color-text-primary); outline: none;">
+            <button type="submit" class="btn btn-secondary" style="margin:0; padding:12px 20px;">Search</button>
+            {% if search_query %}
+                <a href="/patients" class="btn btn-secondary" style="margin:0; padding:12px 20px; text-decoration:none; display:inline-flex; align-items:center;">Clear</a>
+            {% endif %}
+        </form>
+
+        <!-- FLASHED MESSAGES -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- PATIENTS TABLE -->
+        <div style="overflow-x:auto; border-radius:12px; border:1px solid var(--border-color);">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.95rem;">
+                <thead>
+                    <tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid var(--border-color); color:var(--color-text-secondary);">
+                        <th style="padding:16px;">Name</th>
+                        <th style="padding:16px;">Age/Gender</th>
+                        <th style="padding:16px;">Comorbidities</th>
+                        <th style="padding:16px; text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in patients %}
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.2s;" onmouseover="this.style.background='rgba(168,85,247,0.02)'" onmouseout="this.style.background='transparent'">
+                            <td style="padding:16px; font-weight:600; color:var(--color-text-primary);">
+                                {{ patient.name }}
+                            </td>
+                            <td style="padding:16px; color:var(--color-text-secondary);">
+                                {{ patient.age }} yrs / {{ patient.gender }}
+                            </td>
+                            <td style="padding:16px; font-size:0.85rem;">
+                                {% if patient.diabetes == 'Yes' %}<span style="background:rgba(244,63,94,0.1); color:#f43f5e; padding:2px 6px; border-radius:4px; margin-right:4px;">Diabetic</span>{% endif %}
+                                {% if patient.blood_pressure == 'High' %}<span style="background:rgba(245,158,11,0.1); color:#f59e0b; padding:2px 6px; border-radius:4px; margin-right:4px;">Hypertension</span>{% endif %}
+                                {% if patient.smoking == 'Yes' %}<span style="background:rgba(107,114,128,0.1); color:#9ca3af; padding:2px 6px; border-radius:4px;">Smoker</span>{% endif %}
+                                {% if patient.diabetes != 'Yes' and patient.blood_pressure != 'High' and patient.smoking != 'Yes' %}
+                                    <span style="color:var(--color-success);">None</span>
+                                {% endif %}
+                            </td>
+                            <td style="padding:16px; text-align:right; display:flex; justify-content:flex-end; gap:8px;">
+                                <a href="/?patient_id={{ patient.id }}" class="btn btn-success" style="margin:0; padding:6px 12px; font-size:0.8rem; text-decoration:none;">
+                                    Diagnose
+                                </a>
+                                <a href="/patients/{{ patient.id }}" class="btn btn-secondary" style="margin:0; padding:6px 12px; font-size:0.8rem; text-decoration:none;">
+                                    Timeline
+                                </a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="4" style="padding:32px; text-align:center; color:var(--color-text-secondary);">
+                                No patient profiles registered in clinical database.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

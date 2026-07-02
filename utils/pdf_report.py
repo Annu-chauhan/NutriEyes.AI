@@ -1,27 +1,21 @@
 from reportlab.lib.pagesizes import letter
-
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
     Spacer
 )
-
 from reportlab.lib.styles import getSampleStyleSheet
-
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.barcode.qr import QrCodeWidget
 
 def generate_pdf_report(
-
     patient_name,
-
     prediction,
-
     confidence,
-
     recommendation,
-
     hash_value,
-
-    pdf_path
+    pdf_path,
+    verify_url=None
 ):
 
     # =========================
@@ -338,16 +332,36 @@ def generate_pdf_report(
     elements.append(
 
         Paragraph(
-
             f"<b>Security Hash:</b> {hash_value}",
-
             styles['BodyText']
         )
     )
 
     elements.append(
-        Spacer(1, 20)
+        Spacer(1, 15)
     )
+
+    if verify_url:
+        elements.append(
+            Paragraph(
+                "<b>Report Verification QR Code:</b>",
+                styles['Heading3']
+            )
+        )
+        elements.append(Spacer(1, 5))
+        
+        # Instantiate reportlab native vector QR Code barcode
+        qr = QrCodeWidget(verify_url)
+        qr.barWidth = 80
+        qr.barHeight = 80
+        qr.qrVersion = 4
+        
+        # Wrap widget in drawing bounds
+        d = Drawing(80, 80)
+        d.add(qr)
+        
+        elements.append(d)
+        elements.append(Spacer(1, 15))
 
     # =========================
     # DISCLAIMER

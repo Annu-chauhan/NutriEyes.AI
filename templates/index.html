@@ -20,8 +20,17 @@
                 <span>Active Clinician: <strong style="color:var(--color-text-primary);">{{ current_user.username }}</strong></span>
             </div>
             <div style="display:flex; gap:16px; align-items:center;">
+                <a href="/patients" style="font-size:0.85rem; color:var(--color-primary); font-weight:600; text-decoration:none;">
+                    👥 Patient Registry
+                </a>
+                <a href="/dashboard" style="font-size:0.85rem; color:var(--color-primary); font-weight:600; text-decoration:none;">
+                    📊 Analytics
+                </a>
+                <a href="/reports" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600; text-decoration:none;">
+                    📂 Archives
+                </a>
                 <a href="/logout-all" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600; text-decoration:none;">
-                    Logout All Devices
+                    Logout All
                 </a>
                 <a href="/logout" style="font-size:0.85rem; color:var(--color-danger); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px;">
                     <span>Logout</span>
@@ -62,25 +71,26 @@
 
         <form action="/predict" method="POST" enctype="multipart/form-data" id="analysis-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="patient_id" value="{% if patient %}{{ patient.id }}{% endif %}">
             <div class="form-grid">
                 <!-- PATIENT NAME -->
                 <div class="form-group">
                     <label for="patient_name">Patient Name</label>
-                    <input type="text" id="patient_name" name="patient_name" placeholder="E.g. John Doe" required>
+                    <input type="text" id="patient_name" name="patient_name" placeholder="E.g. John Doe" value="{% if patient %}{{ patient.name }}{% endif %}" required>
                 </div>
 
                 <!-- PATIENT AGE -->
                 <div class="form-group">
                     <label for="age">Age</label>
-                    <input type="number" id="age" name="age" min="1" max="120" placeholder="E.g. 45" required>
+                    <input type="number" id="age" name="age" min="1" max="120" placeholder="E.g. 45" value="{% if patient %}{{ patient.age }}{% endif %}" required>
                 </div>
 
                 <!-- DIABETES STATUS -->
                 <div class="form-group">
                     <label for="diabetes">Diabetes Status</label>
                     <select id="diabetes" name="diabetes">
-                        <option value="No">Non-Diabetic</option>
-                        <option value="Yes">Diabetic</option>
+                        <option value="No" {% if patient and patient.diabetes == 'No' %}selected{% endif %}>Non-Diabetic</option>
+                        <option value="Yes" {% if patient and patient.diabetes == 'Yes' %}selected{% endif %}>Diabetic</option>
                     </select>
                 </div>
 
@@ -88,8 +98,8 @@
                 <div class="form-group">
                     <label for="blood_pressure">Blood Pressure</label>
                     <select id="blood_pressure" name="blood_pressure">
-                        <option value="Normal">Normal BP</option>
-                        <option value="High">Hypertensive (High BP)</option>
+                        <option value="Normal" {% if patient and patient.blood_pressure == 'Normal' %}selected{% endif %}>Normal BP</option>
+                        <option value="High" {% if patient and patient.blood_pressure == 'High' %}selected{% endif %}>Hypertensive (High BP)</option>
                     </select>
                 </div>
 
@@ -97,8 +107,8 @@
                 <div class="form-group">
                     <label for="smoking">Smoking Status</label>
                     <select id="smoking" name="smoking">
-                        <option value="No">Non-Smoker</option>
-                        <option value="Yes">Active Smoker</option>
+                        <option value="No" {% if patient and patient.smoking == 'No' %}selected{% endif %}>Non-Smoker</option>
+                        <option value="Yes" {% if patient and patient.smoking == 'Yes' %}selected{% endif %}>Active Smoker</option>
                     </select>
                 </div>
 

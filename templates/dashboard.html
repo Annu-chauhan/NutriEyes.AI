@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - Clinical Analytics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Load Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="container animate-fade-in" style="grid-template-columns: 1fr; max-width: 1100px;">
+    <div class="main-card glass-panel" style="padding: 48px; display:flex; flex-direction:column; gap:32px;">
+        
+        <!-- HEADER -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:20px;">
+            <div>
+                <a href="/patients" style="font-size:0.9rem; color:var(--color-primary); font-weight:600; text-decoration:none;">
+                    ⬅ Patient Registry
+                </a>
+                <h1 style="font-size: 2.2rem; font-weight: 800; color: var(--color-text-primary); margin: 6px 0 0 0;">Practice Analytics</h1>
+            </div>
+            <a href="/" style="font-size:0.9rem; color:var(--color-text-secondary); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:6px;">
+                <span>👁 Diagnostics Portal</span>
+            </a>
+        </div>
+
+        <!-- STAT CARDS -->
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;">
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:24px; text-align:center;">
+                <span style="color:var(--color-text-secondary); font-size:0.85rem; text-transform:uppercase; font-weight:600;">Total Screenings</span>
+                <h2 id="stat-total" style="font-size:2.8rem; font-weight:800; color:var(--color-primary); margin:8px 0 0 0;">0</h2>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:24px; text-align:center;">
+                <span style="color:var(--color-text-secondary); font-size:0.85rem; text-transform:uppercase; font-weight:600;">Average Confidence</span>
+                <h2 id="stat-confidence" style="font-size:2.8rem; font-weight:800; color:var(--color-success); margin:8px 0 0 0;">0%</h2>
+            </div>
+            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:24px; text-align:center;">
+                <span style="color:var(--color-text-secondary); font-size:0.85rem; text-transform:uppercase; font-weight:600;">Model Version</span>
+                <h2 style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary); margin:16px 0 0 0; line-height:1.2;">VGG16 v1.2</h2>
+            </div>
+        </div>
+
+        <!-- CHARTS GRID -->
+        <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:30px; margin-top:20px;">
+            <!-- CHART 1: TIMELINE -->
+            <div style="background:rgba(255,255,255,0.01); border:1px solid var(--border-color); border-radius:16px; padding:30px; height: 380px; position:relative;">
+                <h3 style="font-size:1.1rem; color:var(--color-text-primary); margin:0 0 20px 0; font-weight:700;">Screening Timeline (Past 7 Days)</h3>
+                <canvas id="chart-timeline" style="width:100%; height:80%;"></canvas>
+            </div>
+
+            <!-- CHART 2: DISEASE DISTRIBUTION -->
+            <div style="background:rgba(255,255,255,0.01); border:1px solid var(--border-color); border-radius:16px; padding:30px; height: 380px; position:relative;">
+                <h3 style="font-size:1.1rem; color:var(--color-text-primary); margin:0 0 20px 0; font-weight:700;">Diagnostic Distribution</h3>
+                <div style="position:relative; height:80%; display:flex; align-items:center; justify-content:center;">
+                    <canvas id="chart-distribution" style="max-height:100%; max-width:100%;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Fetch statistics from API
+    fetch("/api/analytics")
+        .then(response => response.json())
+        .then(data => {
+            // Update Stat Cards
+            document.getElementById("stat-total").innerText = data.total_screenings;
+            document.getElementById("stat-confidence").innerText = data.average_confidence + "%";
+
+            // Render Timeline Chart
+            const ctxTimeline = document.getElementById('chart-timeline').getContext('2d');
+            new Chart(ctxTimeline, {
+                type: 'line',
+                data: {
+                    labels: data.timeline.labels,
+                    datasets: [{
+                        label: 'Screenings',
+                        data: data.timeline.data,
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#9ca3af', precision: 0 },
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                        },
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // Render Distribution Chart
+            const ctxDistribution = document.getElementById('chart-distribution').getContext('2d');
+            const distData = data.disease_distribution;
+            new Chart(ctxDistribution, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(distData),
+                    datasets: [{
+                        data: Object.values(distData),
+                        backgroundColor: [
+                            '#10b981', // Normal
+                            '#f59e0b', // Cataract
+                            '#a855f7', // Glaucoma
+                            '#f43f5e'  // DR
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#9ca3af', padding: 15 }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        })
+        .catch(err => console.error("Error loading analytics data:", err));
+});
+</script>
+
+</body>
+</html>

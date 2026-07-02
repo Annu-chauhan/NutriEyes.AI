@@ -20,8 +20,17 @@
                 <span>Active Clinician: <strong style="color:var(--color-text-primary);">{{ current_user.username }}</strong></span>
             </div>
             <div style="display:flex; gap:16px; align-items:center;">
+                <a href="/patients" style="font-size:0.85rem; color:var(--color-primary); font-weight:600; text-decoration:none;">
+                    👥 Patient Registry
+                </a>
+                <a href="/dashboard" style="font-size:0.85rem; color:var(--color-primary); font-weight:600; text-decoration:none;">
+                    📊 Analytics
+                </a>
+                <a href="/reports" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600; text-decoration:none;">
+                    📂 Archives
+                </a>
                 <a href="/logout-all" style="font-size:0.85rem; color:var(--color-text-secondary); font-weight:600; text-decoration:none;">
-                    Logout All Devices
+                    Logout All
                 </a>
                 <a href="/logout" style="font-size:0.85rem; color:var(--color-danger); font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px;">
                     <span>Logout</span>

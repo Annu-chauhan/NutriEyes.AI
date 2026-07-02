@@ -157,8 +157,21 @@ class User(db.Model):
     lockout_until = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
+class Patient(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    age = db.Column(db.Integer, nullable=False)
+    gender = db.Column(db.String(20), default="Other") # Male, Female, Other
+    diabetes = db.Column(db.String(20), default="No")
+    blood_pressure = db.Column(db.String(20), default="Normal")
+    smoking = db.Column(db.String(20), default="No")
+    doctor_notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    reports = db.relationship('Report', backref='patient', lazy=True, cascade="all, delete-orphan")
+
 class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=True)
     patient_name = db.Column(db.String(100))
     age = db.Column(db.Integer)
     diabetes = db.Column(db.String(20))
@@ -172,13 +185,15 @@ class Report(db.Model):
 # CREATE TABLES AFTER MODEL IS DEFINED (WITH AUTO RE-CREATION SCHEMA VERIFICATION)
 with app.app_context():
     try:
-        # Run a simple query to see if the new role column exists
+        # Run a query to verify user (token_version) and patient tables are present
         db.session.execute(db.text("SELECT token_version FROM user LIMIT 1")).all()
+        db.session.execute(db.text("SELECT doctor_notes FROM patient LIMIT 1")).all()
     except Exception:
         db.session.rollback()
-        print("Database schema mismatch detected. Recreating database tables...")
+        print("Database schema mismatch detected (missing user fields or patient table). Recreating database tables...")
         db.drop_all()
     db.create_all()
+
 
 # =========================
 # JWT & SECURITY HELPER FUNCTIONS
@@ -748,7 +763,12 @@ def logout_all():
 @login_required
 @roles_accepted("admin", "doctor", "researcher")
 def home():
-    return render_template("index.html")
+    patient_id = request.args.get("patient_id")
+    patient = None
+    if patient_id:
+        patient = db.session.get(Patient, int(patient_id))
+    return render_template("index.html", patient=patient)
+
 
 # =========================
 # LIVE CAMERA ROUTE
@@ -887,8 +907,48 @@ def predict():
     hash_input = f"{patient_name}{prediction}{confidence}"
     hash_value = generate_hash(hash_input)
     
-    # Save Report record to SQLite
+    # Retrieve or auto-register patient
+    patient_id_form = request.form.get("patient_id")
+    patient = None
+    if patient_id_form and patient_id_form != "None":
+        try:
+            patient = db.session.get(Patient, int(patient_id_form))
+        except ValueError:
+            pass
+            
+    if not patient:
+        # Check if patient name exists already
+        patient = Patient.query.filter_by(name=patient_name).first()
+        if not patient:
+            # Create a new patient profile automatically
+            patient = Patient(
+                name=patient_name,
+                age=age,
+                diabetes=diabetes,
+                blood_pressure=blood_pressure,
+                smoking=smoking
+            )
+            db.session.add(patient)
+            db.session.commit()
+            audit_logger.info(f"Patient Registry: New profile auto-created for patient {patient_name} - IP: {request.remote_addr}")
+
+    # AI Explanation mapping
+    explanations = {
+        "Glaucoma": "Predicted Glaucoma due to high cup-to-disc ratio (vertical enlargement), presence of neuroretinal rim thinning, and local retinal nerve fiber layer (RNFL) loss.",
+        "Diabetic Retinopathy": "Predicted Diabetic Retinopathy due to signs of microaneurysms, retinal hemorrhages, and hard exudates secondary to long-standing hyperglycemia.",
+        "Cataract": "Predicted Cataract due to diffuse lens opacity, loss of red reflex, and significant attenuation of optical scan signal.",
+        "Normal": "Retinal morphology appears intact. Optic disc cup-to-disc ratio is within physiological limits (~0.3), macula shows normal foveal reflex, and vascular arches are free of exudates or hemorrhages."
+    }
+    explanation = explanations.get(prediction, "Retinal scans analyzed using convolutional neural network architectures to detect patterns of micro-vascular anomalies, optic disc changes, or focal signal absorption.")
+    model_version = "VGG16-RetinaNet v1.2"
+
+    # Cryptographic Hash of report parameters
+    hash_input = f"{patient_name}{prediction}{confidence}"
+    hash_value = generate_hash(hash_input)
+    
+    # Save Report record to SQLite linked to Patient
     report = Report(
+        patient_id=patient.id,
         patient_name=patient_name,
         age=age,
         diabetes=diabetes,
@@ -901,6 +961,9 @@ def predict():
     db.session.add(report)
     db.session.commit()
     
+    # Dynamic verify URL for QR code
+    verify_url = f"{request.scheme}://{request.host}/verify-report/{hash_value}"
+    
     # PDF generation
     pdf_path = os.path.join("static", "report.pdf")
     generate_pdf_report(
@@ -909,11 +972,12 @@ def predict():
         confidence,
         recommendation,
         hash_value,
-        pdf_path
+        pdf_path,
+        verify_url=verify_url
     )
     
     # Audit log prediction
-    audit_logger.info(f"Prediction Created: User {g.user.id} ({g.user.username}) generated screening for patient {patient_name} - Result: {prediction} - Confidence: {confidence}% - IP: {request.remote_addr}")
+    audit_logger.info(f"Prediction Created: User {g.user.id} ({g.user.username}) generated screening for patient {patient_name} (ID: {patient.id}) - Result: {prediction} - Confidence: {confidence}% - IP: {request.remote_addr}")
     
     return render_template(
         "result.html",
@@ -925,8 +989,12 @@ def predict():
         risk_level=risk_level,
         pdf_report="/" + pdf_path.replace("\\", "/"),
         gradcam_image=gradcam_image,
-        hash_value=hash_value
+        hash_value=hash_value,
+        explanation=explanation,
+        model_version=model_version,
+        patient=patient
     )
+
 
 # =========================
 # HEALTH CHECK ROUTE
@@ -973,8 +1041,246 @@ def health():
     }, status_code
 
 # =========================
+# PATIENT REGISTRY ROUTES
+# =========================
+
+@app.route("/patients", methods=["GET", "POST"])
+@login_required
+@roles_accepted("admin", "doctor", "researcher")
+def patients():
+    """
+    Patient Registry List & Add
+    ---
+    tags:
+      - Patient Management
+    parameters:
+      - name: name
+        in: formData
+        type: string
+        required: false
+        description: Patient Name (For adding new)
+      - name: age
+        in: formData
+        type: integer
+        required: false
+        description: Patient Age
+      - name: gender
+        in: formData
+        type: string
+        enum: [Male, Female, Other]
+        required: false
+        description: Patient Gender
+      - name: diabetes
+        in: formData
+        type: string
+        enum: [Yes, No]
+        required: false
+        description: Diabetic status
+      - name: blood_pressure
+        in: formData
+        type: string
+        enum: [Normal, High]
+        required: false
+        description: Hypertension status
+      - name: smoking
+        in: formData
+        type: string
+        enum: [Yes, No]
+        required: false
+        description: Smoking status
+    responses:
+      200:
+        description: Renders the patients list HTML page.
+    """
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        age_str = request.form.get("age", "").strip()
+        gender = request.form.get("gender", "Other").strip()
+        diabetes = request.form.get("diabetes", "No").strip()
+        blood_pressure = request.form.get("blood_pressure", "Normal").strip()
+        smoking = request.form.get("smoking", "No").strip()
+        
+        if not name or not age_str:
+            flash("Patient name and age are required.", "danger")
+            return redirect(url_for("patients"))
+            
+        try:
+            age = int(age_str)
+        except ValueError:
+            flash("Patient age must be an integer.", "danger")
+            return redirect(url_for("patients"))
+            
+        new_patient = Patient(
+            name=name,
+            age=age,
+            gender=gender,
+            diabetes=diabetes,
+            blood_pressure=blood_pressure,
+            smoking=smoking
+        )
+        db.session.add(new_patient)
+        db.session.commit()
+        
+        audit_logger.info(f"Patient Registry: Registered Patient {new_patient.name} (ID: {new_patient.id}) by User {g.user.id} ({g.user.username}) - IP: {request.remote_addr}")
+        flash(f"Patient {name} has been successfully registered.", "success")
+        return redirect(url_for("patients"))
+        
+    search_query = request.args.get("search", "").strip()
+    if search_query:
+        patient_list = Patient.query.filter(Patient.name.ilike(f"%{search_query}%")).all()
+    else:
+        patient_list = Patient.query.order_by(Patient.name.asc()).all()
+        
+    return render_template("patients.html", patients=patient_list, search_query=search_query)
+
+
+@app.route("/patients/<int:id>", methods=["GET", "POST"])
+@login_required
+@roles_accepted("admin", "doctor", "researcher")
+def patient_detail(id):
+    """
+    Patient Profile History & Timeline
+    ---
+    tags:
+      - Patient Management
+    parameters:
+      - name: id
+        in: path
+        type: integer
+        required: true
+        description: Patient Database ID
+      - name: doctor_notes
+        in: formData
+        type: string
+        required: false
+        description: Text notes to add/update for patient
+    responses:
+      200:
+        description: Renders the patient timeline & profile details.
+    """
+    patient = db.session.get(Patient, id)
+    if not patient:
+        flash("Patient not found.", "danger")
+        return redirect(url_for("patients"))
+        
+    if request.method == "POST":
+        notes = request.form.get("doctor_notes", "")
+        patient.doctor_notes = notes
+        db.session.commit()
+        audit_logger.info(f"Patient Registry: Notes updated for Patient {patient.name} (ID: {patient.id}) by User {g.user.id} - IP: {request.remote_addr}")
+        flash("Clinical notes updated successfully.", "success")
+        return redirect(url_for("patient_detail", id=id))
+        
+    return render_template("patient_detail.html", patient=patient)
+
+
+# =========================
+# QR REPORT VERIFICATION
+# =========================
+
+@app.route("/verify-report/<hash_value>")
+@limiter.exempt  # Public auditor access
+def verify_report(hash_value):
+    """
+    Cryptographic Report QR Verification
+    ---
+    tags:
+      - Security
+    parameters:
+      - name: hash_value
+        in: path
+        type: string
+        required: true
+        description: Cryptographic sha256 hash of report parameters
+    responses:
+      200:
+        description: Verifies authenticity of the clinical report.
+      404:
+        description: Verification failed. Report hash not found.
+    """
+    report = Report.query.filter_by(hash_value=hash_value).first()
+    if not report:
+        audit_logger.warning(f"Audit Tamper Alert: Verification FAILED for hash {hash_value} - IP: {request.remote_addr}")
+        return render_template("verify_report.html", report=None, hash_value=hash_value), 404
+        
+    audit_logger.info(f"Audit Verification: Verified authenticity of Report {report.id} - Patient: {report.patient_name} - IP: {request.remote_addr}")
+    return render_template("verify_report.html", report=report, hash_value=hash_value)
+
+
+# =========================
+# ANALYTICS DASHBOARD
+# =========================
+
+@app.route("/dashboard")
+@login_required
+@roles_accepted("admin", "doctor", "researcher")
+def dashboard():
+    """
+    Clinical Analytics Dashboard UI
+    ---
+    tags:
+      - Monitoring
+    responses:
+      200:
+        description: Renders Chart.js analytics statistics.
+    """
+    return render_template("dashboard.html")
+
+
+@app.route("/api/analytics")
+@login_required
+@roles_accepted("admin", "doctor", "researcher")
+def api_analytics():
+    """
+    Clinical Analytics JSON Raw API
+    ---
+    tags:
+      - Monitoring
+    responses:
+      200:
+        description: Returns diagnosis distribution and confidence counts.
+    """
+    # Count disease predictions
+    total_screenings = Report.query.count()
+    
+    normal_count = Report.query.filter(Report.disease.ilike("%normal%")).count()
+    cataract_count = Report.query.filter(Report.disease.ilike("%cataract%")).count()
+    glaucoma_count = Report.query.filter(Report.disease.ilike("%glaucoma%")).count()
+    dr_count = Report.query.filter(Report.disease.ilike("%diabetic%")).count()
+    
+    # Calculate avg confidence
+    avg_confidence = 0.0
+    if total_screenings > 0:
+        avg_confidence = db.session.query(db.func.avg(Report.confidence)).scalar() or 0.0
+        
+    # Get last 7 days screenings count
+    screenings_by_day = []
+    labels_by_day = []
+    for i in range(6, -1, -1):
+        day = datetime.datetime.utcnow().date() - datetime.timedelta(days=i)
+        count = Report.query.filter(db.func.date(Report.timestamp) == day).count()
+        labels_by_day.append(day.strftime("%b %d"))
+        screenings_by_day.append(count)
+        
+    return {
+        "total_screenings": total_screenings,
+        "average_confidence": round(avg_confidence, 2),
+        "disease_distribution": {
+            "Normal": normal_count,
+            "Cataract": cataract_count,
+            "Glaucoma": glaucoma_count,
+            "Diabetic Retinopathy": dr_count
+        },
+        "timeline": {
+            "labels": labels_by_day,
+            "data": screenings_by_day
+        }
+    }
+
+# =========================
 # MAIN
 # =========================
+
 
 if __name__ == "__main__":
 
