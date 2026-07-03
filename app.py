@@ -155,6 +155,9 @@ class User(db.Model):
     token_version = db.Column(db.Integer, default=1)
     failed_login_attempts = db.Column(db.Integer, default=0)
     lockout_until = db.Column(db.DateTime, nullable=True)
+    mfa_otp = db.Column(db.String(6), nullable=True)
+    mfa_otp_expiry = db.Column(db.DateTime, nullable=True)
+    mfa_otp_attempts = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 class Patient(db.Model):
@@ -185,12 +188,12 @@ class Report(db.Model):
 # CREATE TABLES AFTER MODEL IS DEFINED (WITH AUTO RE-CREATION SCHEMA VERIFICATION)
 with app.app_context():
     try:
-        # Run a query to verify user (token_version) and patient tables are present
-        db.session.execute(db.text("SELECT token_version FROM user LIMIT 1")).all()
+        # Run a query to verify user (mfa_otp) and patient tables are present
+        db.session.execute(db.text("SELECT mfa_otp FROM user LIMIT 1")).all()
         db.session.execute(db.text("SELECT doctor_notes FROM patient LIMIT 1")).all()
     except Exception:
         db.session.rollback()
-        print("Database schema mismatch detected (missing user fields or patient table). Recreating database tables...")
+        print("Database schema mismatch detected (missing MFA fields or patient table). Recreating database tables...")
         db.drop_all()
     db.create_all()
 
@@ -289,7 +292,7 @@ def set_secure_headers_and_cookies(response):
 @app.before_request
 def verify_csrf_token():
     if request.method == "POST":
-        if request.path in ["/predict", "/login", "/register", "/forgot-password"] or request.path.startswith("/reset-password"):
+        if request.path in ["/predict", "/login", "/register", "/forgot-password", "/verify-otp"] or request.path.startswith("/reset-password"):
             token_in_form = request.form.get("csrf_token")
             token_in_session = session.get("csrf_token")
             if not token_in_session or token_in_form != token_in_session:
@@ -410,6 +413,42 @@ def send_reset_email(to_email, reset_link):
         except Exception as e:
             return False, str(e)
     return False, "SMTP not configured"
+
+def send_otp_email(to_email, otp_code):
+    mail_server = os.environ.get("MAIL_SERVER")
+    mail_port = os.environ.get("MAIL_PORT")
+    mail_username = os.environ.get("MAIL_USERNAME")
+    mail_password = os.environ.get("MAIL_PASSWORD")
+    mail_sender = os.environ.get("MAIL_SENDER", "noreply@nutrieye.ai")
+    
+    if mail_server and mail_port and mail_username and mail_password:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        try:
+            msg = MIMEMultipart()
+            msg["From"] = mail_sender
+            msg["To"] = to_email
+            msg["Subject"] = "NutriEye - Your One-Time verification Code (OTP)"
+            
+            body = f"Hello,\n\nYour One-Time verification Code (OTP) to log in to NutriEye is:\n\n{otp_code}\n\nThis code will expire in 5 minutes. Do not share it with anyone.\n\nBest,\nNutriEye Team"
+            msg.attach(MIMEText(body, "plain"))
+            
+            port = int(mail_port)
+            if port == 465:
+                server = smtplib.SMTP_SSL(mail_server, port)
+            else:
+                server = smtplib.SMTP(mail_server, port)
+                server.starttls()
+                
+            server.login(mail_username, mail_password)
+            server.sendmail(mail_sender, to_email, msg.as_string())
+            server.quit()
+            return True, "Email sent"
+        except Exception as e:
+            return False, str(e)
+    return False, "SMTP not configured"
+
 
 # =========================
 # REGISTRATION ROUTE
@@ -593,28 +632,28 @@ def login():
                 user.lockout_until = None
                 db.session.commit()
                 
-                # JWT Access + Refresh Tokens
-                access_payload = {
-                    "user_id": user.id,
-                    "role": user.role,
-                    "token_version": user.token_version,
-                    "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
-                }
-                access_token = jwt.encode(access_payload, app.secret_key, algorithm="HS256")
+                # Generate 6-digit numeric OTP
+                import random
+                otp = f"{random.randint(100000, 999999)}"
+                user.mfa_otp = otp
+                user.mfa_otp_expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
+                user.mfa_otp_attempts = 0
+                db.session.commit()
                 
-                refresh_payload = {
-                    "user_id": user.id,
-                    "token_version": user.token_version,
-                    "exp": datetime.datetime.utcnow() + datetime.timedelta(days=7)
-                }
-                refresh_token = jwt.encode(refresh_payload, app.secret_key, algorithm="HS256")
+                # Save user ID pending verification in session
+                session["mfa_pending_user_id"] = user.id
                 
-                audit_logger.info(f"Doctor Login: {user.username} (ID: {user.id}) - Role: {user.role} - IP: {request.remote_addr}")
+                # Send OTP via email helper
+                is_sent, mail_msg = send_otp_email(user.email, otp)
                 
-                response = redirect(url_for("home"))
-                set_jwt_cookies(response, access_token, refresh_token)
-                flash(f"Welcome back, Dr. {user.username}!", "success")
-                return response
+                audit_logger.info(f"MFA Triggered: One-Time Password sent to {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
+                
+                if is_sent:
+                    flash("A 6-digit verification code has been sent to your email.", "info")
+                else:
+                    flash(f"A verification code is required. [Demo Mode] OTP Verification Code: {otp}", "info")
+                    
+                return redirect(url_for("verify_otp"))
                 
             except VerifyMismatchError:
                 user.failed_login_attempts += 1
@@ -631,6 +670,127 @@ def login():
             return render_template("login.html")
             
     return render_template("login.html")
+
+# =========================
+# VERIFY OTP ROUTE
+# =========================
+
+@app.route("/verify-otp", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def verify_otp():
+    """
+    Verify Multi-Factor Authentication Code
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: otp_code
+        in: formData
+        type: string
+        required: true
+        description: 6-digit verification code sent to clinician email
+    responses:
+      200:
+        description: Renders the OTP verification HTML page.
+      302:
+        description: Redirects to dashboard upon successful verification.
+      400:
+        description: Invalid code, expired code, or maximum attempts reached.
+      401:
+        description: No verification process is active for this session.
+    """
+    # Verify there is a pending user session
+    pending_user_id = session.get("mfa_pending_user_id")
+    if not pending_user_id:
+        flash("No login attempt is currently active. Please log in first.", "danger")
+        return redirect(url_for("login"))
+        
+    user = db.session.get(User, pending_user_id)
+    if not user:
+        session.pop("mfa_pending_user_id", None)
+        flash("Invalid session. Please login again.", "danger")
+        return redirect(url_for("login"))
+        
+    if request.method == "POST":
+        otp_code = request.form.get("otp_code", "").strip()
+        
+        # Check attempts
+        if user.mfa_otp_attempts >= 3:
+            # Clear pending verify session
+            user.mfa_otp = None
+            user.mfa_otp_expiry = None
+            user.mfa_otp_attempts = 0
+            db.session.commit()
+            session.pop("mfa_pending_user_id", None)
+            
+            audit_logger.warning(f"MFA Locked: Locked verification session for {user.username} (ID: {user.id}) due to exceeding wrong attempts - IP: {request.remote_addr}")
+            flash("Verification failed: Exceeded maximum attempts. Please log in again.", "danger")
+            return redirect(url_for("login"))
+            
+        # Check expired
+        if not user.mfa_otp_expiry or user.mfa_otp_expiry < datetime.datetime.utcnow():
+            user.mfa_otp = None
+            user.mfa_otp_expiry = None
+            user.mfa_otp_attempts = 0
+            db.session.commit()
+            session.pop("mfa_pending_user_id", None)
+            
+            audit_logger.warning(f"MFA Expired: Verification code expired for {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
+            flash("Verification code has expired. Please log in again.", "danger")
+            return redirect(url_for("login"))
+            
+        # Check correct code
+        if otp_code == user.mfa_otp:
+            # Success! Reset fields and clear temp session
+            user.mfa_otp = None
+            user.mfa_otp_expiry = None
+            user.mfa_otp_attempts = 0
+            db.session.commit()
+            session.pop("mfa_pending_user_id", None)
+            
+            # Emit JWT cookies and log in user
+            access_payload = {
+                "user_id": user.id,
+                "role": user.role,
+                "token_version": user.token_version,
+                "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+            }
+            access_token = jwt.encode(access_payload, app.secret_key, algorithm="HS256")
+            
+            refresh_payload = {
+                "user_id": user.id,
+                "token_version": user.token_version,
+                "exp": datetime.datetime.utcnow() + datetime.timedelta(days=7)
+            }
+            refresh_token = jwt.encode(refresh_payload, app.secret_key, algorithm="HS256")
+            
+            audit_logger.info(f"Doctor Login (MFA Successful): {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
+            
+            response = redirect(url_for("home"))
+            set_jwt_cookies(response, access_token, refresh_token)
+            flash(f"Welcome back, Dr. {user.username}!", "success")
+            return response
+        else:
+            user.mfa_otp_attempts += 1
+            db.session.commit()
+            
+            remaining = 3 - user.mfa_otp_attempts
+            audit_logger.warning(f"MFA Attempt Failure: Incorrect OTP code for {user.username} (ID: {user.id}) - Remaining attempts: {remaining} - IP: {request.remote_addr}")
+            
+            if remaining <= 0:
+                # Force redirect out
+                user.mfa_otp = None
+                user.mfa_otp_expiry = None
+                user.mfa_otp_attempts = 0
+                db.session.commit()
+                session.pop("mfa_pending_user_id", None)
+                flash("Exceeded maximum verification attempts. Please log in again.", "danger")
+                return redirect(url_for("login"))
+                
+            flash(f"Incorrect verification code. Attempts remaining: {remaining}", "danger")
+            return redirect(url_for("verify_otp"))
+            
+    return render_template("verify_otp.html")
 
 # =========================
 # FORGOT PASSWORD ROUTE
