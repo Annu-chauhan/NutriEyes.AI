@@ -508,8 +508,13 @@ def register():
             flash("All fields are required.", "danger")
             return render_template("register.html")
             
-        if len(password) < 8:
-            flash("Password must be at least 8 characters long.", "danger")
+        import re
+        if (len(password) < 8 or
+            not re.search(r"[a-z]", password) or
+            not re.search(r"[A-Z]", password) or
+            not re.search(r"\d", password) or
+            not re.search(r"[^a-zA-Z0-9]", password)):
+            flash("Password does not meet complexity requirements. It must contain at least 8 characters, including uppercase, lowercase, number, and special character.", "danger")
             return render_template("register.html")
             
         # Check if username or email already exists
