@@ -92,7 +92,7 @@
 
         <!-- SEARCH BAR -->
         <form action="/patients" method="GET" style="display:flex; gap:10px;">
-            <input type="text" name="search" placeholder="Search patients by name..." value="{{ search_query }}" style="flex:1; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--color-text-primary); outline: none;">
+            <input type="text" name="search" placeholder="Search patients by name or clinician notes..." value="{{ search_query }}" style="flex:1; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--color-text-primary); outline: none;">
             <button type="submit" class="btn btn-secondary" style="margin:0; padding:12px 20px;">Search</button>
             {% if search_query %}
                 <a href="/patients" class="btn btn-secondary" style="margin:0; padding:12px 20px; text-decoration:none; display:inline-flex; align-items:center;">Clear</a>
@@ -125,7 +125,12 @@
                     {% for patient in patients %}
                         <tr style="border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.2s;" onmouseover="this.style.background='rgba(168,85,247,0.02)'" onmouseout="this.style.background='transparent'">
                             <td style="padding:16px; font-weight:600; color:var(--color-text-primary);">
-                                {{ patient.name }}
+                                <div>{{ patient.name }}</div>
+                                {% if patient.notes_snippet %}
+                                    <div style="font-size: 0.75rem; color: var(--color-warning); font-weight: 400; margin-top: 6px; max-width: 280px; display: inline-flex; align-items: center; gap: 4px; background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.2); padding: 3px 8px; border-radius: 4px;">
+                                        🔍 Notes Match: {{ patient.notes_snippet }}
+                                    </div>
+                                {% endif %}
                             </td>
                             <td style="padding:16px; color:var(--color-text-secondary);">
                                 {{ patient.age }} yrs / {{ patient.gender }}

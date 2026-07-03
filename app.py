@@ -1378,7 +1378,32 @@ def patients():
         
     search_query = request.args.get("search", "").strip()
     if search_query:
-        patient_list = Patient.query.filter(Patient.name.ilike(f"%{search_query}%")).all()
+        # Search patient name OR doctor notes using case-insensitive SQL matching
+        patient_list = Patient.query.filter(
+            (Patient.name.ilike(f"%{search_query}%")) | 
+            (Patient.doctor_notes.ilike(f"%{search_query}%"))
+        ).all()
+        
+        # Build text snippets for matches inside doctor notes
+        for patient in patient_list:
+            if patient.doctor_notes and search_query.lower() in patient.doctor_notes.lower():
+                notes_lower = patient.doctor_notes.lower()
+                query_lower = search_query.lower()
+                start_idx = notes_lower.find(query_lower)
+                
+                # Context window boundaries (25 characters before and after)
+                start = max(0, start_idx - 25)
+                end = min(len(patient.doctor_notes), start_idx + len(search_query) + 25)
+                
+                snippet = patient.doctor_notes[start:end]
+                if start > 0:
+                    snippet = "..." + snippet
+                if end < len(patient.doctor_notes):
+                    snippet = snippet + "..."
+                    
+                patient.notes_snippet = snippet
+            else:
+                patient.notes_snippet = None
     else:
         patient_list = Patient.query.order_by(Patient.name.asc()).all()
         
