@@ -48,6 +48,12 @@
                 <span style="color:var(--color-text-secondary);">Confidence Score:</span>
                 <strong style="color:var(--color-text-primary);">{{ report.confidence }}%</strong>
             </div>
+            {% if report.severity_stage %}
+            <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.04); padding-bottom:8px;">
+                <span style="color:var(--color-text-secondary);">Estimated Severity:</span>
+                <strong style="color:var(--color-text-primary);">{{ report.severity_stage }}</strong>
+            </div>
+            {% endif %}
             <div style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.04); padding-bottom:8px;">
                 <span style="color:var(--color-text-secondary);">Generated Time:</span>
                 <strong style="color:var(--color-text-primary);">{{ report.timestamp.strftime('%B %d, %Y - %H:%M UTC') }}</strong>

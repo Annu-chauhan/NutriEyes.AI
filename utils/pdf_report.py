@@ -15,7 +15,8 @@ def generate_pdf_report(
     recommendation,
     hash_value,
     pdf_path,
-    verify_url=None
+    verify_url=None,
+    severity_stage="Healthy"
 ):
 
     # =========================
@@ -88,6 +89,20 @@ def generate_pdf_report(
         Paragraph(
 
             f"<b>Confidence Score:</b> {confidence}%",
+
+            styles['BodyText']
+        )
+    )
+
+    elements.append(
+        Spacer(1, 10)
+    )
+
+    elements.append(
+
+        Paragraph(
+
+            f"<b>Estimated Severity:</b> {severity_stage}",
 
             styles['BodyText']
         )

@@ -77,11 +77,30 @@
             </h2>
             
             <!-- Risk Badge -->
-            <div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px;">
                 {% if "High" in risk_level %}
-                <span class="badge-risk high">⚠️ Patient Profile: {{ risk_level }}</span>
+                <span class="badge-risk high" style="margin: 0;">⚠️ Patient Profile: {{ risk_level }}</span>
                 {% else %}
-                <span class="badge-risk low">🛡️ Patient Profile: {{ risk_level }}</span>
+                <span class="badge-risk low" style="margin: 0;">🛡️ Patient Profile: {{ risk_level }}</span>
+                {% endif %}
+
+                <!-- Severity Stage Badge -->
+                {% if severity_stage == "Healthy" %}
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); color: #10b981; line-height: 1;">
+                    🟢 Severity: {{ severity_stage }}
+                </span>
+                {% elif severity_stage == "Early Stage" %}
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; background: rgba(234, 179, 8, 0.1); border: 1px solid rgba(234, 179, 8, 0.25); color: #eab308; line-height: 1;">
+                    🟡 Severity: {{ severity_stage }}
+                </span>
+                {% elif severity_stage == "Moderate Stage" %}
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); color: #f59e0b; line-height: 1;">
+                    🟠 Severity: {{ severity_stage }}
+                </span>
+                {% else %}
+                <span style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 9999px; font-size: 0.8rem; font-weight: 700; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); color: #ef4444; line-height: 1;">
+                    🔴 Severity: {{ severity_stage }}
+                </span>
                 {% endif %}
             </div>
         </div>

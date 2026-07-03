@@ -182,18 +182,20 @@ class Report(db.Model):
     smoking = db.Column(db.String(20))
     disease = db.Column(db.String(100))
     confidence = db.Column(db.Float)
+    severity_stage = db.Column(db.String(50), nullable=True)
     hash_value = db.Column(db.String(256))
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 # CREATE TABLES AFTER MODEL IS DEFINED (WITH AUTO RE-CREATION SCHEMA VERIFICATION)
 with app.app_context():
     try:
-        # Run a query to verify user (mfa_otp) and patient tables are present
+        # Run a query to verify user (mfa_otp), patient, and report (severity_stage) tables are present
         db.session.execute(db.text("SELECT mfa_otp FROM user LIMIT 1")).all()
         db.session.execute(db.text("SELECT doctor_notes FROM patient LIMIT 1")).all()
+        db.session.execute(db.text("SELECT severity_stage FROM report LIMIT 1")).all()
     except Exception:
         db.session.rollback()
-        print("Database schema mismatch detected (missing MFA fields or patient table). Recreating database tables...")
+        print("Database schema mismatch detected (missing MFA, patient, or severity_stage columns). Recreating database tables...")
         db.drop_all()
     db.create_all()
 
@@ -1107,6 +1109,16 @@ def predict():
     explanation = explanations.get(prediction, "Retinal scans analyzed using convolutional neural network architectures to detect patterns of micro-vascular anomalies, optic disc changes, or focal signal absorption.")
     model_version = "VGG16-RetinaNet v1.2"
 
+    # Determine severity stage
+    severity_stage = "Healthy"
+    if prediction != "Normal":
+        if confidence < 70.0:
+            severity_stage = "Early Stage"
+        elif confidence < 85.0:
+            severity_stage = "Moderate Stage"
+        else:
+            severity_stage = "Advanced Stage"
+
     # Cryptographic Hash of report parameters
     hash_input = f"{patient_name}{prediction}{confidence}"
     hash_value = generate_hash(hash_input)
@@ -1121,6 +1133,7 @@ def predict():
         smoking=smoking,
         disease=prediction,
         confidence=confidence,
+        severity_stage=severity_stage,
         hash_value=hash_value
     )
     db.session.add(report)
@@ -1138,11 +1151,12 @@ def predict():
         recommendation,
         hash_value,
         pdf_path,
-        verify_url=verify_url
+        verify_url=verify_url,
+        severity_stage=severity_stage
     )
     
     # Audit log prediction
-    audit_logger.info(f"Prediction Created: User {g.user.id} ({g.user.username}) generated screening for patient {patient_name} (ID: {patient.id}) - Result: {prediction} - Confidence: {confidence}% - IP: {request.remote_addr}")
+    audit_logger.info(f"Prediction Created: User {g.user.id} ({g.user.username}) generated screening for patient {patient_name} (ID: {patient.id}) - Result: {prediction} - Severity: {severity_stage} - Confidence: {confidence}% - IP: {request.remote_addr}")
     
     return render_template(
         "result.html",
@@ -1157,7 +1171,8 @@ def predict():
         hash_value=hash_value,
         explanation=explanation,
         model_version=model_version,
-        patient=patient
+        patient=patient,
+        severity_stage=severity_stage
     )
 
 
