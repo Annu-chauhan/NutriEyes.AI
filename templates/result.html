@@ -52,6 +52,19 @@
             {% endif %}
         {% endwith %}
 
+        <!-- CRITICAL LOW CONFIDENCE WARNING BANNER -->
+        {% if confidence < 55 %}
+        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 12px; padding: 18px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
+            <div style="font-size: 2.2rem; display: flex; align-items: center;">⚠️</div>
+            <div style="text-align: left;">
+                <h4 style="color: var(--color-danger); margin: 0 0 4px 0; font-size: 1.05rem; font-weight: 700;">CRITICAL ALERT: Low AI Confidence ({{ confidence }}%)</h4>
+                <p style="color: var(--color-text-secondary); margin: 0; font-size: 0.9rem; line-height: 1.55;">
+                    The diagnostic confidence falls below the recommended safety threshold (55.0%). This model prediction should be verified by a clinician manually. Please consider obtaining a higher-quality retinal fundus image scan.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="result-header-panel">
             <div class="diagnosis-label">AI Diagnostic Screening Complete</div>
             <h2 class="diagnosis-value">
