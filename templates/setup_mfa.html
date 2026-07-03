@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - MFA Setup</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;">
+
+<div class="glass-panel" style="width: 100%; max-width: 480px; padding: 40px; text-align: center;">
+    <div class="brand-section" style="margin-bottom: 24px;">
+        <h1 class="brand-title" style="font-size: 2.8rem; display: inline-flex; align-items: center; gap: 8px; margin:0;">
+            👁 NutriEye
+        </h1>
+        <p class="subtitle" style="font-size: 0.95rem; margin-top: 6px;">Setup Multi-Factor Authentication</p>
+    </div>
+
+    <!-- FLASHED MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div style="text-align: left; color: var(--color-text-secondary); font-size: 0.9rem; line-height: 1.55; margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
+        <p style="margin:0;">To protect patient records, clinician accounts require Multi-Factor Authentication. Please pair your mobile device:</p>
+        <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px;">
+            <li>Download <strong>Google Authenticator</strong> or any TOTP app on your phone.</li>
+            <li>Scan the QR code below using the app.</li>
+            <li>Alternatively, manually type the secret key into your app.</li>
+        </ol>
+    </div>
+
+    <!-- QR CODE DISPLAY -->
+    <div style="background: white; padding: 15px; display: inline-block; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <img src="{{ qr_code_url }}" alt="Pairing QR Code" style="display: block; width: 200px; height: 200px;">
+    </div>
+
+    <!-- MANUAL CODE -->
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 24px; text-align: left;">
+        <span style="font-size: 0.8rem; color: var(--color-text-secondary); display: block; margin-bottom: 4px;">Manual Setup Key:</span>
+        <code style="font-family: var(--font-mono); font-size: 1.1rem; letter-spacing: 2px; font-weight: 700; color: var(--color-primary); word-break: break-all;">{{ secret }}</code>
+    </div>
+
+    <!-- VERIFICATION CODE FORM -->
+    <form action="/setup-mfa" method="POST" style="display: flex; flex-direction: column; gap: 20px; text-align: left; border-top: 1px solid var(--border-color); padding-top: 24px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
+        <div class="form-group">
+            <label for="otp_code">Enter 6-Digit Authenticator Code</label>
+            <input type="text" id="otp_code" name="otp_code" placeholder="E.g. 123456" pattern="\d{6}" maxlength="6" required autocomplete="off" style="text-align:center; font-size:1.5rem; letter-spacing:8px; font-weight:700;">
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Verify and Save Device
+        </button>
+    </form>
+</div>
+
+</body>
+</html>

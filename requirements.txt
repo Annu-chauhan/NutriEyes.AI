@@ -23,3 +23,4 @@ Flask-CORS==6.0.5
 PyJWT==2.13.0
 argon2-cffi==25.1.0
 flasgger==0.9.7.1
+pyotp==2.9.0
