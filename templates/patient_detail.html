@@ -73,6 +73,18 @@
             <a href="/?patient_id={{ patient.id }}" class="btn btn-success" style="margin:0; padding:8px 16px;">+ Diagnose New Scan</a>
         </div>
 
+        <!-- PATIENT CLINICAL HISTORY GRAPH -->
+        {% if patient.reports %}
+        <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px;">
+            <h4 style="margin: 0 0 16px 0; font-size: 0.95rem; font-weight: 600; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px;">
+                📈 Confidence & Progression History
+            </h4>
+            <div style="position: relative; height: 180px; width: 100%;">
+                <canvas id="patientProgressionChart"></canvas>
+            </div>
+        </div>
+        {% endif %}
+
         <div style="display:flex; flex-direction:column; gap:20px; position:relative; margin-left:10px; border-left:2px solid var(--border-color); padding-left:20px; padding-top:10px;">
             {% for report in patient.reports|sort(attribute='timestamp', reverse=True) %}
                 <div style="position:relative; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:20px;">
@@ -122,6 +134,102 @@
         </div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    {% if patient.reports %}
+    // Extract dates and scores from Jinja reports, sorted chronologically (oldest first)
+    const reports = [
+        {% for report in patient.reports|sort(attribute='timestamp') %}
+        {
+            date: "{{ report.timestamp.strftime('%b %d, %Y') }}",
+            disease: "{{ report.disease }}",
+            confidence: {{ report.confidence }}
+        },
+        {% endfor %}
+    ];
+
+    const labels = reports.map(r => r.date);
+    const data = reports.map(r => r.confidence);
+    const tooltips = reports.map(r => `${r.disease} (${r.confidence}%)`);
+
+    const ctx = document.getElementById('patientProgressionChart').getContext('2d');
+    
+    const primaryColor = '#a855f7'; // Purple primary accent
+    const gridColor = 'rgba(255, 255, 255, 0.05)';
+    const textColor = 'rgba(255, 255, 255, 0.6)';
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'AI Diagnostic Confidence (%)',
+                data: data,
+                borderColor: primaryColor,
+                backgroundColor: 'rgba(168, 85, 247, 0.08)',
+                borderWidth: 2,
+                pointBackgroundColor: reports.map(r => r.disease === 'Normal' ? '#10b981' : '#ef4444'), // Green for normal, red for abnormal
+                pointBorderColor: reports.map(r => r.disease === 'Normal' ? '#10b981' : '#ef4444'),
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const index = context.dataIndex;
+                            return `Diagnosis: ${tooltips[index]}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        font: {
+                            family: 'Inter, system-ui, sans-serif',
+                            size: 10
+                        }
+                    }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    grid: {
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        font: {
+                            family: 'Inter, system-ui, sans-serif',
+                            size: 10
+                        },
+                        callback: function(value) {
+                            return value + "%";
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+});
+</script>
 
 </body>
 </html>
