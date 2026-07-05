@@ -49,8 +49,13 @@
             </div>
             <input type="password" id="password" name="password" placeholder="Enter password" required autocomplete="current-password" style="margin-top: 6px;">
         </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; margin-top: -5px; margin-bottom: 10px;">
+            <input type="checkbox" id="remember_me" style="width: auto; margin: 0; cursor: pointer;">
+            <label for="remember_me" style="font-size: 0.85rem; color: var(--color-text-secondary); cursor: pointer; user-select: none; margin: 0;">Remember my email address</label>
+        </div>
  
-        <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
+        <button type="submit" class="btn btn-primary">
             Sign In to Portal
         </button>
     </form>
@@ -68,16 +73,25 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const emailInput = document.getElementById("email");
+        const rememberMeCheckbox = document.getElementById("remember_me");
         const rememberedEmail = localStorage.getItem("nutrieye_remembered_email");
+        
         if (rememberedEmail && emailInput) {
             emailInput.value = rememberedEmail;
+            if (rememberMeCheckbox) {
+                rememberMeCheckbox.checked = true;
+            }
         }
 
         const form = document.querySelector("form");
         if (form) {
             form.addEventListener("submit", function() {
                 if (emailInput && emailInput.value) {
-                    localStorage.setItem("nutrieye_remembered_email", emailInput.value.trim());
+                    if (rememberMeCheckbox && rememberMeCheckbox.checked) {
+                        localStorage.setItem("nutrieye_remembered_email", emailInput.value.trim());
+                    } else {
+                        localStorage.removeItem("nutrieye_remembered_email");
+                    }
                 }
             });
         }
