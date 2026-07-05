@@ -287,6 +287,10 @@ def get_mail_config():
     
     return mail_server, mail_port, mail_username, mail_password, mail_sender
 
+def send_email_async(send_fn, *args):
+    import threading
+    threading.Thread(target=send_fn, args=args, daemon=True).start()
+
 # CREATE TABLES AFTER MODEL IS DEFINED (WITH AUTO RE-CREATION SCHEMA VERIFICATION)
 with app.app_context():
     try:
@@ -732,8 +736,6 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
-        is_sent, mail_msg = send_verification_email(email, v_token)
-
         # Store a mock email log for ease of use in demo mode
         mock_email = SentEmail(
             to_email=email,
@@ -743,14 +745,13 @@ def register():
         db.session.add(mock_email)
         db.session.commit()
         
+        # Send SMTP email asynchronously in background
+        send_email_async(send_verification_email, email, v_token)
+        
         audit_logger.info(f"User registered: {username} (ID: {new_user.id}) - Role: {role} - Verified: False - IP: {request.remote_addr}")
         
         session["verification_pending_email"] = email
-        if is_sent:
-            flash("Registration successful! A 6-digit verification code has been sent to your email.", "success")
-        else:
-            flash(f"[Demo Mode] Registration successful! SMTP not configured. Your 6-digit verification code is: {v_token}", "warning")
-            
+        flash("Registration successful! A 6-digit verification code has been sent to your email. (You can also copy it from your mock clinician /inbox page).", "success")
         return redirect(url_for("verify_email_otp"))
         
     return render_template("register.html")
@@ -859,8 +860,6 @@ def login():
                     user.verification_token = "".join([str(random.randint(0, 9)) for _ in range(6)])
                     db.session.commit()
                 
-                is_sent, mail_msg = send_verification_email(user.email, user.verification_token)
-                
                 mock_email = SentEmail(
                     to_email=user.email,
                     subject="Verify Your Email - NutriEye",
@@ -869,11 +868,11 @@ def login():
                 db.session.add(mock_email)
                 db.session.commit()
                 
+                # Send email asynchronously
+                send_email_async(send_verification_email, user.email, user.verification_token)
+                
                 session["verification_pending_email"] = user.email
-                if is_sent:
-                    flash("Verify your email before logging in. A 6-digit verification code has been sent to your email.", "warning")
-                else:
-                    flash(f"[Demo Mode] Verify your email before logging in. SMTP is not configured. Your verification code is: {user.verification_token}", "warning")
+                flash("Verify your email before logging in. A 6-digit verification code has been sent to your email. (You can also copy it from your mock clinician /inbox page).", "warning")
                 return redirect(url_for("verify_email_otp"))
                 
             try:
@@ -894,8 +893,6 @@ def login():
                 user.mfa_otp_attempts = 0
                 db.session.commit()
                 
-                is_sent, mail_msg = send_otp_email(user.email, login_otp)
-                
                 # Store a mock email log for ease of use in demo mode
                 mock_email = SentEmail(
                     to_email=user.email,
@@ -905,13 +902,14 @@ def login():
                 db.session.add(mock_email)
                 db.session.commit()
                 
+                # Send email asynchronously
+                send_email_async(send_otp_email, user.email, login_otp)
+                
                 audit_logger.info(f"Email MFA OTP Sent: 2FA challenge generated for {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
                 
-                if is_sent:
-                    flash("A 6-digit verification code (2FA OTP) has been sent to your registered email.", "success")
-                else:
-                    session["demo_login_otp"] = login_otp
-                    flash(f"[Demo Mode] SMTP not configured. Your 6-digit login verification code (2FA OTP) is: {login_otp}", "warning")
+                # Save demo OTP to session to prefill or display in warning banner
+                session["demo_login_otp"] = login_otp
+                flash("A 6-digit verification code (2FA OTP) has been sent to your registered email. (You can also copy it from your mock clinician /inbox page).", "success")
                 
                 return redirect(url_for("verify_otp"))
                 
@@ -1174,10 +1172,6 @@ def forgot_password():
             user.reset_token_expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
             db.session.commit()
             
-            is_sent, mail_msg = send_reset_email(email, reset_otp)
-            
-            audit_logger.info(f"Password reset OTP requested for: {email} - IP: {request.remote_addr}")
-            
             # Store mock email
             mock_email = SentEmail(
                 to_email=email,
@@ -1187,12 +1181,14 @@ def forgot_password():
             db.session.add(mock_email)
             db.session.commit()
             
+            # Send SMTP email asynchronously in background
+            send_email_async(send_reset_email, email, reset_otp)
+            
+            audit_logger.info(f"Password reset OTP requested for: {email} - IP: {request.remote_addr}")
+            
             session["reset_pending_email"] = email
-            if is_sent:
-                flash("A 6-digit recovery OTP has been sent to your registered email.", "success")
-            else:
-                session["demo_reset_otp"] = reset_otp
-                flash(f"[Demo Mode] SMTP not configured. Your 6-digit recovery OTP is: {reset_otp}", "warning")
+            session["demo_reset_otp"] = reset_otp
+            flash("A 6-digit recovery OTP has been sent to your registered email. (You can also copy it from your mock clinician /inbox page).", "success")
             return redirect(url_for("reset_password_otp"))
         else:
             flash("If that email address exists in our database, a recovery OTP has been sent.", "info")
