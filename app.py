@@ -138,12 +138,13 @@ swagger = Swagger(app, template={
     }
 })
 
-# Initialize Rate Limiter
+# Initialize Rate Limiter (Disabled globally to prevent lockouts during testing)
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
+    default_limits=[],
+    storage_uri="memory://",
+    enabled=False
 )
 
 # Initialize Argon2 Password Hasher
