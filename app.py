@@ -278,6 +278,13 @@ def get_mail_config():
     mail_username = os.environ.get("MAIL_USERNAME") or os.environ.get("mail_username")
     mail_password = os.environ.get("MAIL_PASSWORD") or os.environ.get("mail_password")
     mail_sender = os.environ.get("MAIL_SENDER") or os.environ.get("mail_sender") or mail_username or "noreply@nutrieye.ai"
+    
+    if mail_server: mail_server = mail_server.strip()
+    if mail_port: mail_port = mail_port.strip()
+    if mail_username: mail_username = mail_username.strip()
+    if mail_password: mail_password = mail_password.strip()
+    if mail_sender: mail_sender = mail_sender.strip()
+    
     return mail_server, mail_port, mail_username, mail_password, mail_sender
 
 # CREATE TABLES AFTER MODEL IS DEFINED (WITH AUTO RE-CREATION SCHEMA VERIFICATION)
