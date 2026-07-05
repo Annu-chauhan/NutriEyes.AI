@@ -47,7 +47,12 @@
                 <label for="password" style="margin-bottom: 0;">Password</label>
                 <a href="/forgot-password" style="font-size: 0.8rem; color: var(--color-primary); text-decoration: none;">Forgot Password?</a>
             </div>
-            <input type="password" id="password" name="password" placeholder="Enter password" required autocomplete="current-password" style="margin-top: 6px;">
+            <div style="position: relative; margin-top: 6px;">
+                <input type="password" id="password" name="password" placeholder="Enter password" required autocomplete="current-password" style="width: 100%; padding-right: 40px; box-sizing: border-box; margin: 0;">
+                <button type="button" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--color-text-secondary); cursor: pointer; padding: 0; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; height: 100%; line-height: 1;">
+                    👁️
+                </button>
+            </div>
         </div>
 
         <div style="display: flex; align-items: center; gap: 8px; margin-top: -5px; margin-bottom: 10px;">
@@ -72,6 +77,16 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        const togglePassword = document.getElementById("togglePassword");
+        const passwordInput = document.getElementById("password");
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener("click", function () {
+                const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+                passwordInput.setAttribute("type", type);
+                this.textContent = type === "password" ? "👁️" : "🙈";
+            });
+        }
+
         const emailInput = document.getElementById("email");
         const rememberMeCheckbox = document.getElementById("remember_me");
         const rememberedEmail = localStorage.getItem("nutrieye_remembered_email");

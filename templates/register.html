@@ -52,7 +52,12 @@
 
         <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" name="password" placeholder="Create password" required autocomplete="new-password">
+            <div style="position: relative;">
+                <input type="password" id="password" name="password" placeholder="Create password" required autocomplete="new-password" style="width: 100%; padding-right: 40px; box-sizing: border-box; margin: 0;">
+                <button type="button" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--color-text-secondary); cursor: pointer; padding: 0; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; height: 100%; line-height: 1;">
+                    👁️
+                </button>
+            </div>
             
             <!-- PASSWORD STRENGTH METER -->
             <div id="strength-meter-container" style="display:none; margin-top: 15px; font-size: 0.85rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px;">
@@ -76,7 +81,16 @@
 
     <script>
     document.addEventListener("DOMContentLoaded", function() {
+        const togglePassword = document.getElementById("togglePassword");
         const passwordInput = document.getElementById("password");
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener("click", function () {
+                const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+                passwordInput.setAttribute("type", type);
+                this.textContent = type === "password" ? "👁️" : "🙈";
+            });
+        }
+
         const meterContainer = document.getElementById("strength-meter-container");
         const bar = document.getElementById("strength-bar");
         const text = document.getElementById("strength-text");
