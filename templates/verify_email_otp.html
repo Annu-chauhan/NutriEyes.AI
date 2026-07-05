@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - Verify Email OTP</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;">
+
+<div class="glass-panel" style="width: 100%; max-width: 440px; padding: 40px; text-align: center;">
+    <div class="brand-section" style="margin-bottom: 30px;">
+        <h1 class="brand-title" style="font-size: 2.8rem; display: inline-flex; align-items: center; gap: 8px; margin:0;">
+            👁 NutriEye
+        </h1>
+        <p class="subtitle" style="font-size: 0.95rem; margin-top: 6px;">Clinician Verification Portal</p>
+    </div>
+
+    <!-- FLASHED MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <p style="text-align:left; color:var(--color-text-secondary); font-size:0.9rem; line-height:1.5; margin-bottom:20px;">
+        A 6-digit verification code has been sent to your registered clinician email address. Please enter the code below to verify your identity and activate your account.
+    </p>
+
+    <form action="/verify-email-otp" method="POST" style="display: flex; flex-direction: column; gap: 20px; text-align: left;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
+        <div class="form-group">
+            <label for="email">Verify Email Address</label>
+            <input type="email" id="email" name="email" value="{{ default_email }}" placeholder="yourname@gmail.com" required autocomplete="email" style="margin-bottom:10px;">
+        </div>
+
+        <div class="form-group">
+            <label for="otp_code">Enter 6-Digit Verification Code</label>
+            <input type="text" id="otp_code" name="otp_code" placeholder="E.g. 123456" pattern="\d{6}" maxlength="6" required autocomplete="one-time-code" style="text-align:center; font-size:1.5rem; letter-spacing:8px; font-weight:700;">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
+            Verify & Activate Account
+        </button>
+    </form>
+
+    <div style="margin-top: 24px; font-size: 0.9rem; color: var(--color-text-secondary);">
+        Need help? 
+        <a href="/login" style="color: var(--color-primary); font-weight: 600; text-decoration: none;">Return to login</a>
+    </div>
+</div>
+
+</body>
+</html>

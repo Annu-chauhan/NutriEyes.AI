@@ -72,6 +72,41 @@ if "SPACE_ID" in os.environ:
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
+# =========================
+# CRYPTOGRAPHIC ENCRYPTION SYSTEM (OWASP A02:2021)
+# =========================
+
+import base64
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+# Derive a stable base64 Fernet key from the secret key for local fallback consistency
+_kdf = PBKDF2HMAC(
+    algorithm=hashes.SHA256(),
+    length=32,
+    salt=b"nutrieye_salt_2026",
+    iterations=100000
+)
+_raw_key = _kdf.derive(app.secret_key.encode())
+_fallback_key = base64.urlsafe_b64encode(_raw_key).decode()
+
+ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", _fallback_key)
+fernet = Fernet(ENCRYPTION_KEY.encode())
+
+def encrypt_data(data):
+    if not data:
+        return ""
+    return fernet.encrypt(str(data).encode()).decode()
+
+def decrypt_data(token):
+    if not token:
+        return ""
+    try:
+        return fernet.decrypt(token.encode()).decode()
+    except Exception:
+        return "[Decryption Error]"
+
 # Initialize CORS
 CORS(app, supports_credentials=True)
 
@@ -181,20 +216,36 @@ class User(db.Model):
 
 class Patient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
+    _name = db.Column("name", db.String(500), nullable=False) # Encrypted
     age = db.Column(db.Integer, nullable=False)
     gender = db.Column(db.String(20), default="Other") # Male, Female, Other
     diabetes = db.Column(db.String(20), default="No")
     blood_pressure = db.Column(db.String(20), default="Normal")
     smoking = db.Column(db.String(20), default="No")
-    doctor_notes = db.Column(db.Text, nullable=True)
+    _doctor_notes = db.Column("doctor_notes", db.Text, nullable=True) # Encrypted
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     reports = db.relationship('Report', backref='patient', lazy=True, cascade="all, delete-orphan")
+
+    @property
+    def name(self):
+        return decrypt_data(self._name)
+
+    @name.setter
+    def name(self, value):
+        self._name = encrypt_data(value)
+
+    @property
+    def doctor_notes(self):
+        return decrypt_data(self._doctor_notes)
+
+    @doctor_notes.setter
+    def doctor_notes(self, value):
+        self._doctor_notes = encrypt_data(value)
 
 class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=True)
-    patient_name = db.Column(db.String(100))
+    _patient_name = db.Column("patient_name", db.String(500)) # Encrypted
     age = db.Column(db.Integer)
     diabetes = db.Column(db.String(20))
     blood_pressure = db.Column(db.String(20))
@@ -204,6 +255,14 @@ class Report(db.Model):
     severity_stage = db.Column(db.String(50), nullable=True)
     hash_value = db.Column(db.String(256))
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    @property
+    def patient_name(self):
+        return decrypt_data(self._patient_name)
+
+    @patient_name.setter
+    def patient_name(self, value):
+        self._patient_name = encrypt_data(value)
 
 class SentEmail(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -456,7 +515,7 @@ def generate_hash(data):
 # SMTP EMAIL NOTIFICATION HELPERS
 # =========================
 
-def send_verification_email(to_email, verification_link):
+def send_verification_email(to_email, verification_code):
     mail_server = os.environ.get("MAIL_SERVER")
     mail_port = os.environ.get("MAIL_PORT")
     mail_username = os.environ.get("MAIL_USERNAME")
@@ -473,7 +532,7 @@ def send_verification_email(to_email, verification_link):
             msg["To"] = to_email
             msg["Subject"] = "NutriEye - Verify Your Email"
             
-            body = f"Hello,\n\nPlease verify your email to activate your account:\n{verification_link}\n\nBest,\nNutriEye Team"
+            body = f"Hello,\n\nPlease verify your email to activate your clinician account. Use the following 6-digit verification code:\n\n👉 {verification_code}\n\nBest,\nNutriEye Team"
             msg.attach(MIMEText(body, "plain"))
             
             port = int(mail_port)
@@ -635,9 +694,10 @@ def register():
             flash("Username or email already registered.", "danger")
             return render_template("register.html")
             
-        # Create user with Argon2 and verification token
+        # Create user with Argon2 and 6-digit verification OTP code
         hashed_password = ph.hash(password)
-        v_token = secrets.token_urlsafe(32)
+        import random
+        v_token = "".join([str(random.randint(0, 9)) for _ in range(6)])
         
         new_user = User(
             username=username,
@@ -651,26 +711,26 @@ def register():
         db.session.add(new_user)
         db.session.commit()
         
-        verification_link = url_for("verify_email", token=v_token, _external=True)
-        is_sent, mail_msg = send_verification_email(email, verification_link)
+        is_sent, mail_msg = send_verification_email(email, v_token)
 
         # Store a mock email log for ease of use in demo mode
         mock_email = SentEmail(
             to_email=email,
             subject="Verify Your Email - NutriEye",
-            body=f"Hello,\n\nPlease verify your email to activate your account:\n{verification_link}\n\nBest,\nNutriEye Team"
+            body=f"Hello,\n\nPlease verify your email to activate your account. Use the code:\n👉 {v_token}\n\nBest,\nNutriEye Team"
         )
         db.session.add(mock_email)
         db.session.commit()
         
         audit_logger.info(f"User registered: {username} (ID: {new_user.id}) - Role: {role} - Verified: False - IP: {request.remote_addr}")
         
+        session["verification_pending_email"] = email
         if is_sent:
-            flash("Registration successful! A verification email has been sent.", "success")
-            return redirect(url_for("login"))
+            flash("Registration successful! A 6-digit verification code has been sent to your email.", "success")
         else:
-            flash("Registration successful! A verification link has been sent to your mock inbox.", "success")
-            return redirect(url_for("inbox"))
+            flash(f"[Demo Mode] Registration successful! SMTP not configured. Your 6-digit verification code is: {v_token}", "warning")
+            
+        return redirect(url_for("verify_email_otp"))
         
     return render_template("register.html")
 
@@ -678,19 +738,45 @@ def register():
 # VERIFY EMAIL ROUTE
 # =========================
 
-@app.route("/verify-email/<token>")
+@app.route("/verify-email-otp", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
-def verify_email(token):
-    user = User.query.filter_by(verification_token=token).first()
-    if user:
-        user.is_verified = True
-        user.verification_token = None
-        db.session.commit()
-        audit_logger.info(f"User email verified: {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
-        flash("Email verified successfully! You can now log in.", "success")
-    else:
-        flash("Invalid or expired verification link.", "danger")
-    return redirect(url_for("login"))
+def verify_email_otp():
+    """
+    Verify Email OTP Code
+    """
+    default_email = session.get("verification_pending_email", "")
+    
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        otp_code = request.form.get("otp_code", "").strip()
+        
+        if not email or not otp_code:
+            flash("Both email and 6-digit verification code are required.", "danger")
+            return render_template("verify_email_otp.html", default_email=email)
+            
+        user = User.query.filter_by(email=email).first()
+        if user:
+            if user.is_verified:
+                flash("Email has already been verified. Please log in.", "info")
+                return redirect(url_for("login"))
+                
+            if user.verification_token == otp_code:
+                user.is_verified = True
+                user.verification_token = None
+                db.session.commit()
+                
+                session.pop("verification_pending_email", None)
+                audit_logger.info(f"User email verified: {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
+                flash("Email verified successfully! You can now log in.", "success")
+                return redirect(url_for("login"))
+            else:
+                flash("Incorrect 6-digit verification code.", "danger")
+                return render_template("verify_email_otp.html", default_email=email)
+        else:
+            flash("Invalid email or verification code.", "danger")
+            return render_template("verify_email_otp.html", default_email=email)
+            
+    return render_template("verify_email_otp.html", default_email=default_email)
 
 # =========================
 # LOGIN ROUTE
@@ -747,16 +833,27 @@ def login():
                 
             # Check verification
             if not user.is_verified:
-                v_link = url_for("verify_email", token=user.verification_token, _external=True)
+                if not user.verification_token or len(user.verification_token) != 6:
+                    import random
+                    user.verification_token = "".join([str(random.randint(0, 9)) for _ in range(6)])
+                    db.session.commit()
+                
+                is_sent, mail_msg = send_verification_email(user.email, user.verification_token)
+                
                 mock_email = SentEmail(
                     to_email=user.email,
                     subject="Verify Your Email - NutriEye",
-                    body=f"Hello,\n\nPlease verify your email to activate your account:\n{v_link}\n\nBest,\nNutriEye Team"
+                    body=f"Hello,\n\nPlease verify your email to activate your account. Use the code:\n👉 {user.verification_token}\n\nBest,\nNutriEye Team"
                 )
                 db.session.add(mock_email)
                 db.session.commit()
-                flash("Verify your email before logging in. A verification link has been sent to your mock inbox.", "warning")
-                return redirect(url_for("inbox"))
+                
+                session["verification_pending_email"] = user.email
+                if is_sent:
+                    flash("Verify your email before logging in. A 6-digit verification code has been sent to your email.", "warning")
+                else:
+                    flash(f"[Demo Mode] Verify your email before logging in. SMTP is not configured. Your verification code is: {user.verification_token}", "warning")
+                return redirect(url_for("verify_email_otp"))
                 
             try:
                 ph.verify(user.password_hash, password)
@@ -1209,17 +1306,17 @@ def fetch_gmail_verification():
 
             mail.logout()
 
-            # Find links using regex
-            verify_pattern = r"https?://[a-zA-Z0-9.:_-]+/verify-email/([a-zA-Z0-9_-]+)"
+            # Find verification OTP code or reset link using regex
+            verify_otp_pattern = r"(?:code|OTP):\s*(\d{6})"
             reset_pattern = r"https?://[a-zA-Z0-9.:_-]+/reset-password/([a-zA-Z0-9_-]+)"
             
-            verify_match = re.search(verify_pattern, body)
+            verify_match = re.search(verify_otp_pattern, body, re.IGNORECASE)
             reset_match = re.search(reset_pattern, body)
 
             if verify_match:
-                token = verify_match.group(1)
+                otp_code = verify_match.group(1)
                 # Verify user directly
-                target_user = User.query.filter_by(verification_token=token).first()
+                target_user = User.query.filter_by(verification_token=otp_code).first()
                 if target_user:
                     target_user.is_verified = True
                     target_user.verification_token = None
@@ -1228,7 +1325,7 @@ def fetch_gmail_verification():
                     flash("Email verified successfully from your Gmail inbox! Please log in.", "success")
                     return redirect(url_for("login"))
                 else:
-                    flash("Verification token from email is invalid or has already been used.", "danger")
+                    flash("Verification code from email is invalid or has already been used.", "danger")
                     return render_template("verify_gmail.html", default_email=email_address)
             
             elif reset_match:
@@ -1237,7 +1334,7 @@ def fetch_gmail_verification():
                 return redirect(url_for("reset_password", token=token))
             
             else:
-                flash("No activation or reset link found in the latest email body.", "danger")
+                flash("No activation code or reset link found in the latest email body.", "danger")
                 return render_template("verify_gmail.html", default_email=email_address)
 
         except imaplib.IMAP4.error as e:
@@ -1634,11 +1731,14 @@ def patients():
         
     search_query = request.args.get("search", "").strip()
     if search_query:
-        # Search patient name OR doctor notes using case-insensitive SQL matching
-        patient_list = Patient.query.filter(
-            (Patient.name.ilike(f"%{search_query}%")) | 
-            (Patient.doctor_notes.ilike(f"%{search_query}%"))
-        ).all()
+        # Search patient name OR doctor notes by fetching all and filtering in-memory
+        all_patients = Patient.query.all()
+        patient_list = []
+        for patient in all_patients:
+            name_match = search_query.lower() in patient.name.lower()
+            notes_match = patient.doctor_notes and (search_query.lower() in patient.doctor_notes.lower())
+            if name_match or notes_match:
+                patient_list.append(patient)
         
         # Build text snippets for matches inside doctor notes
         for patient in patient_list:
@@ -1661,7 +1761,9 @@ def patients():
             else:
                 patient.notes_snippet = None
     else:
-        patient_list = Patient.query.order_by(Patient.name.asc()).all()
+        all_patients = Patient.query.all()
+        # Sort in memory since name is a decrypted property
+        patient_list = sorted(all_patients, key=lambda x: x.name.lower())
         
     return render_template("patients.html", patients=patient_list, search_query=search_query)
 
