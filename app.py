@@ -289,6 +289,11 @@ with app.app_context():
     # SMTP Configuration Diagnostics (logs to container console to check key existence/names)
     mail_keys = [k for k in os.environ.keys() if k.lower().startswith("mail_")]
     print(f"SMTP Configuration Diagnostics: Detected environment keys: {mail_keys}", flush=True)
+    try:
+        mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
+        print(f"SMTP Config Values: server={mail_server}, port={mail_port}, username={mail_username}, has_password={bool(mail_password)}, sender={mail_sender}", flush=True)
+    except Exception as e:
+        print(f"SMTP Diagnostics Error: {str(e)}", flush=True)
 
 
 # =========================
