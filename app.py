@@ -671,7 +671,7 @@ def register():
     if request.method == "POST":
 
         username = request.form.get("username", "").strip()
-        email = request.form.get("email", "").strip()
+        email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         role = request.form.get("role", "doctor").strip()
         
@@ -747,7 +747,7 @@ def verify_email_otp():
     default_email = session.get("verification_pending_email", "")
     
     if request.method == "POST":
-        email = request.form.get("email", "").strip()
+        email = request.form.get("email", "").strip().lower()
         otp_code = request.form.get("otp_code", "").strip()
         
         if not email or not otp_code:
@@ -816,7 +816,7 @@ def login():
         
     if request.method == "POST":
 
-        email = request.form.get("email", "").strip()
+        email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         
         if not email or not password:
@@ -1113,7 +1113,7 @@ def forgot_password():
     """
     if request.method == "POST":
 
-        email = request.form.get("email", "").strip()
+        email = request.form.get("email", "").strip().lower()
         if not email:
             flash("Email is required.", "danger")
             return render_template("forgot_password.html")
@@ -1261,7 +1261,7 @@ def fetch_gmail_verification():
             default_email = user.email
 
     if request.method == "POST":
-        email_address = request.form.get("email", "").strip()
+        email_address = request.form.get("email", "").strip().lower()
         app_password = request.form.get("app_password", "").strip()
 
         if not email_address or not app_password:
