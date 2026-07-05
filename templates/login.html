@@ -63,5 +63,24 @@
     </div>
 </div>
 
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const emailInput = document.getElementById("email");
+        const rememberedEmail = localStorage.getItem("nutrieye_remembered_email");
+        if (rememberedEmail && emailInput) {
+            emailInput.value = rememberedEmail;
+        }
+
+        const form = document.querySelector("form");
+        if (form) {
+            form.addEventListener("submit", function() {
+                if (emailInput && emailInput.value) {
+                    localStorage.setItem("nutrieye_remembered_email", emailInput.value.trim());
+                }
+            });
+        }
+    });
+</script>
+
 </body>
 </html>
