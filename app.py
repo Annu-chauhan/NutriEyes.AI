@@ -866,14 +866,34 @@ def login():
                 # Save user ID pending verification in session
                 session["mfa_pending_user_id"] = user.id
                 
-                if not user.totp_secret:
-                    # Redirect to first-time setup
-                    audit_logger.info(f"MFA Setup Triggered: Authenticator setup required for {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
-                    return redirect(url_for("setup_mfa"))
+                # Generate 6-digit numeric login OTP code (Email-based 2FA)
+                import random
+                login_otp = "".join([str(random.randint(0, 9)) for _ in range(6)])
+                user.mfa_otp = login_otp
+                user.mfa_otp_expiry = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
+                user.mfa_otp_attempts = 0
+                db.session.commit()
+                
+                is_sent, mail_msg = send_otp_email(user.email, login_otp)
+                
+                # Store a mock email log for ease of use in demo mode
+                mock_email = SentEmail(
+                    to_email=user.email,
+                    subject="Your NutriEye One-Time Login Code",
+                    body=f"Hello,\n\nYour One-Time verification Code (OTP) to log in to NutriEye is:\n\n👉 {login_otp}\n\nThis code will expire in 5 minutes.\n\nBest,\nNutriEye Team"
+                )
+                db.session.add(mock_email)
+                db.session.commit()
+                
+                audit_logger.info(f"Email MFA OTP Sent: 2FA challenge generated for {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
+                
+                if is_sent:
+                    flash("A 6-digit verification code (2FA OTP) has been sent to your registered email.", "success")
                 else:
-                    # Redirect to verify OTP
-                    audit_logger.info(f"MFA Challenge Triggered: Authenticator verification required for {user.username} (ID: {user.id}) - IP: {request.remote_addr}")
-                    return redirect(url_for("verify_otp"))
+                    session["demo_login_otp"] = login_otp
+                    flash(f"[Demo Mode] SMTP not configured. Your 6-digit login verification code (2FA OTP) is: {login_otp}", "warning")
+                
+                return redirect(url_for("verify_otp"))
                 
             except VerifyMismatchError:
                 user.failed_login_attempts += 1
@@ -1018,16 +1038,24 @@ def verify_otp():
         flash("Invalid session. Please login again.", "danger")
         return redirect(url_for("login"))
         
-    if not user.totp_secret:
-        # MFA has not been paired, redirect to setup
-        return redirect(url_for("setup_mfa"))
-        
+    if request.method == "GET":
+        demo_otp = session.pop("demo_login_otp", None)
+        if demo_otp:
+            flash(f"[Demo Mode] SMTP not configured. Your 6-digit login verification code (2FA OTP) is: {demo_otp}", "warning")
+            
     if request.method == "POST":
         otp_code = request.form.get("otp_code", "").strip()
         
+        # Check expiry
+        if user.mfa_otp_expiry and user.mfa_otp_expiry < datetime.datetime.utcnow():
+            user.mfa_otp_attempts = 0
+            db.session.commit()
+            session.pop("mfa_pending_user_id", None)
+            flash("Verification code has expired. Please log in again.", "danger")
+            return redirect(url_for("login"))
+            
         # Check attempts
         if user.mfa_otp_attempts >= 3:
-            # Clear pending verify session
             user.mfa_otp_attempts = 0
             db.session.commit()
             session.pop("mfa_pending_user_id", None)
@@ -1036,15 +1064,15 @@ def verify_otp():
             flash("Verification failed: Exceeded maximum attempts. Please log in again.", "danger")
             return redirect(url_for("login"))
             
-        import pyotp
-        totp = pyotp.TOTP(user.totp_secret)
-        
         # Check correct code
-        if totp.verify(otp_code, valid_window=1):
+        if user.mfa_otp == otp_code:
             # Success! Reset attempts counter
+            user.mfa_otp = None
+            user.mfa_otp_expiry = None
             user.mfa_otp_attempts = 0
             db.session.commit()
             session.pop("mfa_pending_user_id", None)
+            session.pop("demo_login_otp", None)
             
             # Emit JWT cookies and log in user
             access_payload = {
@@ -1076,7 +1104,6 @@ def verify_otp():
             audit_logger.warning(f"MFA Attempt Failure: Incorrect OTP code for {user.username} (ID: {user.id}) - Remaining attempts: {remaining} - IP: {request.remote_addr}")
             
             if remaining <= 0:
-                # Force redirect out
                 user.mfa_otp_attempts = 0
                 db.session.commit()
                 session.pop("mfa_pending_user_id", None)
@@ -1121,33 +1148,34 @@ def forgot_password():
             
         user = User.query.filter_by(email=email).first()
         if user:
-            token = secrets.token_urlsafe(32)
-            user.reset_token = token
+            import random
+            reset_otp = "".join([str(random.randint(0, 9)) for _ in range(6)])
+            user.reset_token = reset_otp
             user.reset_token_expiry = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
             db.session.commit()
             
-            reset_link = url_for("reset_password", token=token, _external=True)
-            is_sent, mail_msg = send_reset_email(email, reset_link)
+            is_sent, mail_msg = send_reset_email(email, reset_otp)
             
-            audit_logger.info(f"Password reset link requested for: {email} - IP: {request.remote_addr}")
+            audit_logger.info(f"Password reset OTP requested for: {email} - IP: {request.remote_addr}")
             
             # Store mock email
             mock_email = SentEmail(
                 to_email=email,
                 subject="Password Reset Request - NutriEye",
-                body=f"Hello,\n\nPlease reset your password using the link below:\n{reset_link}\n\nThis link will expire in 1 hour.\n\nBest,\nNutriEye Team"
+                body=f"Hello,\n\nPlease reset your password using the following 6-digit recovery code:\n\n👉 {reset_otp}\n\nThis code will expire in 1 hour.\n\nBest,\nNutriEye Team"
             )
             db.session.add(mock_email)
             db.session.commit()
             
+            session["reset_pending_email"] = email
             if is_sent:
-                flash("A password reset link has been sent to your email.", "success")
-                return redirect(url_for("login"))
+                flash("A 6-digit recovery OTP has been sent to your registered email.", "success")
             else:
-                flash("A password reset link has been sent to your mock inbox.", "success")
-                return redirect(url_for("inbox"))
+                session["demo_reset_otp"] = reset_otp
+                flash(f"[Demo Mode] SMTP not configured. Your 6-digit recovery OTP is: {reset_otp}", "warning")
+            return redirect(url_for("reset_password_otp"))
         else:
-            flash("If that email address exists in our database, a reset link has been sent.", "info")
+            flash("If that email address exists in our database, a recovery OTP has been sent.", "info")
             
     return render_template("forgot_password.html")
 
@@ -1155,21 +1183,35 @@ def forgot_password():
 # RESET PASSWORD ROUTE
 # =========================
 
-@app.route("/reset-password/<token>", methods=["GET", "POST"])
+@app.route("/reset-password-otp", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
-def reset_password(token):
-    user = User.query.filter_by(reset_token=token).first()
-    if not user or (user.reset_token_expiry and user.reset_token_expiry < datetime.datetime.utcnow()):
-        flash("Invalid or expired reset link.", "danger")
-        return redirect(url_for("login"))
-        
+def reset_password_otp():
+    default_email = session.get("reset_pending_email", "")
+    
+    # GET: check if demo OTP is present to flash it
+    if request.method == "GET":
+        demo_otp = session.pop("demo_reset_otp", None)
+        if demo_otp:
+            flash(f"[Demo Mode] SMTP not configured. Your 6-digit recovery OTP is: {demo_otp}", "warning")
+            
     if request.method == "POST":
-        password = request.form.get("password", "")
+        email = request.form.get("email", "").strip().lower()
+        otp_code = request.form.get("otp_code", "").strip()
+        password = request.form.get("new_password", "")
         confirm_password = request.form.get("confirm_password", "")
         
-        if not password or not confirm_password:
+        if not email or not otp_code or not password or not confirm_password:
             flash("All fields are required.", "danger")
-            return render_template("reset_password.html", token=token)
+            return render_template("reset_password_otp.html", default_email=email)
+            
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            flash("Invalid email or verification code.", "danger")
+            return render_template("reset_password_otp.html", default_email=email)
+            
+        if user.reset_token != otp_code or (user.reset_token_expiry and user.reset_token_expiry < datetime.datetime.utcnow()):
+            flash("Invalid or expired 6-digit recovery OTP.", "danger")
+            return render_template("reset_password_otp.html", default_email=email)
             
         import re
         if (len(password) < 8 or
@@ -1178,23 +1220,27 @@ def reset_password(token):
             not re.search(r"\d", password) or
             not re.search(r"[^a-zA-Z0-9]", password)):
             flash("Password does not meet complexity requirements. It must contain at least 8 characters, including uppercase, lowercase, number, and special character.", "danger")
-            return render_template("reset_password.html", token=token)
+            return render_template("reset_password_otp.html", default_email=email)
             
         if password != confirm_password:
             flash("Passwords do not match.", "danger")
-            return render_template("reset_password.html", token=token)
+            return render_template("reset_password_otp.html", default_email=email)
             
+        # Update password securely
         user.password_hash = ph.hash(password)
         user.reset_token = None
         user.reset_token_expiry = None
-        user.token_version += 1 # Invalidate active device sessions
+        user.token_version += 1 # Invalidate other active device sessions
         db.session.commit()
         
-        audit_logger.info(f"Password Changed: {user.username} (ID: {user.id}) successfully updated password - IP: {request.remote_addr}")
+        session.pop("reset_pending_email", None)
+        session.pop("demo_reset_otp", None)
+        
+        audit_logger.info(f"Password Changed: {user.username} (ID: {user.id}) successfully updated password via OTP - IP: {request.remote_addr}")
         flash("Password successfully reset! Please log in.", "success")
         return redirect(url_for("login"))
         
-    return render_template("reset_password.html", token=token)
+    return render_template("reset_password_otp.html", default_email=default_email)
 
 # =========================
 # LOGOUT ROUTE
@@ -1307,35 +1353,41 @@ def fetch_gmail_verification():
 
             mail.logout()
 
-            # Find verification OTP code or reset link using regex
-            verify_otp_pattern = r"(?:code|OTP):\s*(\d{6})"
-            reset_pattern = r"https?://[a-zA-Z0-9.:_-]+/reset-password/([a-zA-Z0-9_-]+)"
+            # Find 6-digit OTP code using regex
+            otp_pattern = r"(?:code|OTP):\s*(\d{6})"
+            otp_match = re.search(otp_pattern, body, re.IGNORECASE)
             
-            verify_match = re.search(verify_otp_pattern, body, re.IGNORECASE)
-            reset_match = re.search(reset_pattern, body)
-
-            if verify_match:
-                otp_code = verify_match.group(1)
-                # Verify user directly
-                target_user = User.query.filter_by(verification_token=otp_code).first()
-                if target_user:
-                    target_user.is_verified = True
-                    target_user.verification_token = None
-                    db.session.commit()
-                    audit_logger.info(f"Gmail IMAP Auto-Verification Success: {target_user.username} (ID: {target_user.id}) - IP: {request.remote_addr}")
-                    flash("Email verified successfully from your Gmail inbox! Please log in.", "success")
-                    return redirect(url_for("login"))
+            subject = msg.get("Subject", "")
+            
+            if otp_match:
+                otp_code = otp_match.group(1)
+                
+                # Check if it is a password reset or verification email
+                if "reset" in subject.lower() or "password" in subject.lower():
+                    target_user = User.query.filter_by(reset_token=otp_code).first()
+                    if target_user:
+                        session["reset_pending_email"] = target_user.email
+                        session["demo_reset_otp"] = otp_code
+                        audit_logger.info(f"Gmail IMAP Reset OTP Fetch Success: {target_user.username} (ID: {target_user.id}) - IP: {request.remote_addr}")
+                        flash("Reset OTP code fetched successfully! Please choose your new password.", "success")
+                        return redirect(url_for("reset_password_otp"))
+                    else:
+                        flash("Password reset code from email is invalid or has expired.", "danger")
+                        return render_template("verify_gmail.html", default_email=email_address)
                 else:
-                    flash("Verification code from email is invalid or has already been used.", "danger")
-                    return render_template("verify_gmail.html", default_email=email_address)
-            
-            elif reset_match:
-                token = reset_match.group(1)
-                flash("Reset link fetched successfully. Please choose your new password.", "success")
-                return redirect(url_for("reset_password", token=token))
-            
+                    target_user = User.query.filter_by(verification_token=otp_code).first()
+                    if target_user:
+                        target_user.is_verified = True
+                        target_user.verification_token = None
+                        db.session.commit()
+                        audit_logger.info(f"Gmail IMAP Auto-Verification Success: {target_user.username} (ID: {target_user.id}) - IP: {request.remote_addr}")
+                        flash("Email verified successfully from your Gmail inbox! Please log in.", "success")
+                        return redirect(url_for("login"))
+                    else:
+                        flash("Verification code from email is invalid or has already been used.", "danger")
+                        return render_template("verify_gmail.html", default_email=email_address)
             else:
-                flash("No activation code or reset link found in the latest email body.", "danger")
+                flash("No activation or recovery code found in the latest email body.", "danger")
                 return render_template("verify_gmail.html", default_email=email_address)
 
         except imaplib.IMAP4.error as e:
