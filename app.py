@@ -272,6 +272,14 @@ class SentEmail(db.Model):
     body = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
+def get_mail_config():
+    mail_server = os.environ.get("MAIL_SERVER") or os.environ.get("mail_server")
+    mail_port = os.environ.get("MAIL_PORT") or os.environ.get("mail_port")
+    mail_username = os.environ.get("MAIL_USERNAME") or os.environ.get("mail_username")
+    mail_password = os.environ.get("MAIL_PASSWORD") or os.environ.get("mail_password")
+    mail_sender = os.environ.get("MAIL_SENDER") or os.environ.get("mail_sender") or mail_username or "noreply@nutrieye.ai"
+    return mail_server, mail_port, mail_username, mail_password, mail_sender
+
 # CREATE TABLES AFTER MODEL IS DEFINED (WITH AUTO RE-CREATION SCHEMA VERIFICATION)
 with app.app_context():
     try:
@@ -525,13 +533,7 @@ def generate_hash(data):
 # SMTP EMAIL NOTIFICATION HELPERS
 # =========================
 
-def get_mail_config():
-    mail_server = os.environ.get("MAIL_SERVER") or os.environ.get("mail_server")
-    mail_port = os.environ.get("MAIL_PORT") or os.environ.get("mail_port")
-    mail_username = os.environ.get("MAIL_USERNAME") or os.environ.get("mail_username")
-    mail_password = os.environ.get("MAIL_PASSWORD") or os.environ.get("mail_password")
-    mail_sender = os.environ.get("MAIL_SENDER") or os.environ.get("mail_sender") or mail_username or "noreply@nutrieye.ai"
-    return mail_server, mail_port, mail_username, mail_password, mail_sender
+# get_mail_config is defined above
 
 def send_verification_email(to_email, verification_code):
     mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
