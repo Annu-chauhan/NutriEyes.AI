@@ -546,11 +546,38 @@ def generate_hash(data):
 
 # get_mail_config is defined above
 
+def connect_smtp(mail_server, mail_port, mail_username, mail_password):
+    import smtplib
+    port = int(mail_port)
+    server = None
+    
+    # Try primary port
+    try:
+        if port == 465:
+            server = smtplib.SMTP_SSL(mail_server, port, timeout=5)
+        else:
+            server = smtplib.SMTP(mail_server, port, timeout=5)
+            server.starttls()
+        server.login(mail_username, mail_password)
+        return server
+    except Exception as e1:
+        # Try fallback port (SSL 465 if STARTTLS 587 failed, and vice-versa)
+        fallback_port = 465 if port != 465 else 587
+        try:
+            if fallback_port == 465:
+                server = smtplib.SMTP_SSL(mail_server, fallback_port, timeout=5)
+            else:
+                server = smtplib.SMTP(mail_server, fallback_port, timeout=5)
+                server.starttls()
+            server.login(mail_username, mail_password)
+            return server
+        except Exception as e2:
+            raise Exception(f"Primary port {port} failed ({str(e1)}). Fallback port {fallback_port} failed ({str(e2)})")
+
 def send_verification_email(to_email, verification_code):
     mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     
     if mail_server and mail_port and mail_username and mail_password:
-        import smtplib
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         try:
@@ -562,14 +589,7 @@ def send_verification_email(to_email, verification_code):
             body = f"Hello,\n\nPlease verify your email to activate your clinician account. Use the following 6-digit verification code:\n\n👉 {verification_code}\n\nBest,\nNutriEye Team"
             msg.attach(MIMEText(body, "plain"))
             
-            port = int(mail_port)
-            if port == 465:
-                server = smtplib.SMTP_SSL(mail_server, port, timeout=10)
-            else:
-                server = smtplib.SMTP(mail_server, port, timeout=10)
-                server.starttls()
-                
-            server.login(mail_username, mail_password)
+            server = connect_smtp(mail_server, mail_port, mail_username, mail_password)
             server.sendmail(mail_sender, to_email, msg.as_string())
             server.quit()
             return True, "Email sent"
@@ -583,7 +603,6 @@ def send_reset_email(to_email, reset_code):
     mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     
     if mail_server and mail_port and mail_username and mail_password:
-        import smtplib
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         try:
@@ -595,14 +614,7 @@ def send_reset_email(to_email, reset_code):
             body = f"Hello,\n\nPlease reset your password using the following 6-digit recovery code:\n\n👉 {reset_code}\n\nThis code will expire in 1 hour.\n\nBest,\nNutriEye Team"
             msg.attach(MIMEText(body, "plain"))
             
-            port = int(mail_port)
-            if port == 465:
-                server = smtplib.SMTP_SSL(mail_server, port, timeout=10)
-            else:
-                server = smtplib.SMTP(mail_server, port, timeout=10)
-                server.starttls()
-                
-            server.login(mail_username, mail_password)
+            server = connect_smtp(mail_server, mail_port, mail_username, mail_password)
             server.sendmail(mail_sender, to_email, msg.as_string())
             server.quit()
             return True, "Email sent"
@@ -616,7 +628,6 @@ def send_otp_email(to_email, otp_code):
     mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     
     if mail_server and mail_port and mail_username and mail_password:
-        import smtplib
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         try:
@@ -628,14 +639,7 @@ def send_otp_email(to_email, otp_code):
             body = f"Hello,\n\nYour One-Time verification Code (OTP) to log in to NutriEye is:\n\n👉 {otp_code}\n\nThis code will expire in 5 minutes. Do not share it with anyone.\n\nBest,\nNutriEye Team"
             msg.attach(MIMEText(body, "plain"))
             
-            port = int(mail_port)
-            if port == 465:
-                server = smtplib.SMTP_SSL(mail_server, port, timeout=10)
-            else:
-                server = smtplib.SMTP(mail_server, port, timeout=10)
-                server.starttls()
-                
-            server.login(mail_username, mail_password)
+            server = connect_smtp(mail_server, mail_port, mail_username, mail_password)
             server.sendmail(mail_sender, to_email, msg.as_string())
             server.quit()
             return True, "Email sent"
