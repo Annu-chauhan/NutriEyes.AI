@@ -7,6 +7,18 @@ import jwt
 from functools import wraps
 from flasgger import Swagger
 
+# Load local .env variables manually to avoid external dependencies
+def load_dotenv():
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    os.environ[key.strip()] = val.strip().strip("'\"")
+
+load_dotenv()
 
 from flask import (
     Flask,
@@ -193,6 +205,13 @@ class Report(db.Model):
     hash_value = db.Column(db.String(256))
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
+class SentEmail(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    to_email = db.Column(db.String(120), nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
+
 # CREATE TABLES AFTER MODEL IS DEFINED (WITH AUTO RE-CREATION SCHEMA VERIFICATION)
 with app.app_context():
     try:
@@ -200,9 +219,10 @@ with app.app_context():
         db.session.execute(db.text("SELECT totp_secret FROM user LIMIT 1")).all()
         db.session.execute(db.text("SELECT doctor_notes FROM patient LIMIT 1")).all()
         db.session.execute(db.text("SELECT severity_stage FROM report LIMIT 1")).all()
+        db.session.execute(db.text("SELECT to_email FROM sent_email LIMIT 1")).all()
     except Exception:
         db.session.rollback()
-        print("Database schema mismatch detected (missing MFA, patient, or severity_stage columns). Recreating database tables...")
+        print("Database schema mismatch detected (missing MFA, patient, severity_stage, or sent_email columns). Recreating database tables...")
         db.drop_all()
     db.create_all()
 
@@ -282,7 +302,7 @@ def set_secure_headers_and_cookies(response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://omnidim.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://omnidim.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://api.qrserver.com;"
     
     if hasattr(g, "new_access_token") and g.new_access_token:
         samesite = "None" if "SPACE_ID" in os.environ else "Lax"
@@ -550,15 +570,24 @@ def register():
         
         verification_link = url_for("verify_email", token=v_token, _external=True)
         is_sent, mail_msg = send_verification_email(email, verification_link)
+
+        # Store a mock email log for ease of use in demo mode
+        mock_email = SentEmail(
+            to_email=email,
+            subject="Verify Your Email - NutriEye",
+            body=f"Hello,\n\nPlease verify your email to activate your account:\n{verification_link}\n\nBest,\nNutriEye Team"
+        )
+        db.session.add(mock_email)
+        db.session.commit()
         
         audit_logger.info(f"User registered: {username} (ID: {new_user.id}) - Role: {role} - Verified: False - IP: {request.remote_addr}")
         
         if is_sent:
             flash("Registration successful! A verification email has been sent.", "success")
+            return redirect(url_for("login"))
         else:
-            flash(f"Registration successful! [Demo Mode] Email verification link: {verification_link}", "info")
-            
-        return redirect(url_for("login"))
+            flash("Registration successful! A verification link has been sent to your mock inbox.", "success")
+            return redirect(url_for("inbox"))
         
     return render_template("register.html")
 
@@ -636,8 +665,15 @@ def login():
             # Check verification
             if not user.is_verified:
                 v_link = url_for("verify_email", token=user.verification_token, _external=True)
-                flash(f"Verify your email before logging in. [Demo Mode] Activation Link: {v_link}", "warning")
-                return render_template("login.html")
+                mock_email = SentEmail(
+                    to_email=user.email,
+                    subject="Verify Your Email - NutriEye",
+                    body=f"Hello,\n\nPlease verify your email to activate your account:\n{v_link}\n\nBest,\nNutriEye Team"
+                )
+                db.session.add(mock_email)
+                db.session.commit()
+                flash("Verify your email before logging in. A verification link has been sent to your mock inbox.", "warning")
+                return redirect(url_for("inbox"))
                 
             try:
                 ph.verify(user.password_hash, password)
@@ -914,10 +950,21 @@ def forgot_password():
             
             audit_logger.info(f"Password reset link requested for: {email} - IP: {request.remote_addr}")
             
+            # Store mock email
+            mock_email = SentEmail(
+                to_email=email,
+                subject="Password Reset Request - NutriEye",
+                body=f"Hello,\n\nPlease reset your password using the link below:\n{reset_link}\n\nThis link will expire in 1 hour.\n\nBest,\nNutriEye Team"
+            )
+            db.session.add(mock_email)
+            db.session.commit()
+            
             if is_sent:
                 flash("A password reset link has been sent to your email.", "success")
+                return redirect(url_for("login"))
             else:
-                flash(f"Password reset link generated: [Demo Mode] {reset_link}", "info")
+                flash("A password reset link has been sent to your mock inbox.", "success")
+                return redirect(url_for("inbox"))
         else:
             flash("If that email address exists in our database, a reset link has been sent.", "info")
             
@@ -998,6 +1045,126 @@ def logout_all():
     clear_jwt_cookies(response)
     flash("Successfully logged out from all active devices.", "success")
     return response
+
+# =========================
+# MOCK CLINICIAN MAILBOX
+# =========================
+
+@app.route("/inbox", methods=["GET", "POST"])
+def inbox():
+    if request.method == "POST":
+        if request.form.get("action") == "clear":
+            SentEmail.query.delete()
+            db.session.commit()
+            flash("Mock mailbox cleared.", "info")
+            return redirect(url_for("inbox"))
+            
+    emails = SentEmail.query.order_by(SentEmail.timestamp.desc()).all()
+    return render_template("inbox.html", emails=emails)
+
+# =========================
+# GMAIL IMAP VERIFICATION FETCH
+# =========================
+
+@app.route("/fetch-gmail-verification", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def fetch_gmail_verification():
+    """
+    Automated Gmail IMAP Verification Fetcher
+    """
+    # Pre-fill email from session if possible
+    pending_user_id = session.get("mfa_pending_user_id")
+    default_email = ""
+    if pending_user_id:
+        user = db.session.get(User, pending_user_id)
+        if user:
+            default_email = user.email
+
+    if request.method == "POST":
+        email_address = request.form.get("email", "").strip()
+        app_password = request.form.get("app_password", "").strip()
+
+        if not email_address or not app_password:
+            flash("Both email and Google App Password are required.", "danger")
+            return render_template("verify_gmail.html", default_email=email_address)
+
+        import imaplib
+        import email
+        import re
+        try:
+            # Connect to IMAP
+            mail = imaplib.IMAP4_SSL("imap.gmail.com")
+            mail.login(email_address, app_password)
+            mail.select("inbox")
+
+            # Search for NutriEye emails
+            status, messages = mail.search(None, '(SUBJECT "NutriEye")')
+            if status != "OK" or not messages[0]:
+                flash("No NutriEye emails found in your inbox. Please register first or request a resend.", "warning")
+                mail.logout()
+                return render_template("verify_gmail.html", default_email=email_address)
+
+            # Fetch latest matching email
+            email_ids = messages[0].split()
+            latest_email_id = email_ids[-1]
+            status, data = mail.fetch(latest_email_id, "(RFC822)")
+            
+            raw_email = data[0][1]
+            msg = email.message_from_bytes(raw_email)
+            
+            # Extract email body
+            body = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    content_type = part.get_content_type()
+                    content_disposition = str(part.get("Content-Disposition"))
+                    if content_type == "text/plain" and "attachment" not in content_disposition:
+                        body = part.get_payload(decode=True).decode()
+                        break
+            else:
+                body = msg.get_payload(decode=True).decode()
+
+            mail.logout()
+
+            # Find links using regex
+            verify_pattern = r"https?://[a-zA-Z0-9.:_-]+/verify-email/([a-zA-Z0-9_-]+)"
+            reset_pattern = r"https?://[a-zA-Z0-9.:_-]+/reset-password/([a-zA-Z0-9_-]+)"
+            
+            verify_match = re.search(verify_pattern, body)
+            reset_match = re.search(reset_pattern, body)
+
+            if verify_match:
+                token = verify_match.group(1)
+                # Verify user directly
+                target_user = User.query.filter_by(verification_token=token).first()
+                if target_user:
+                    target_user.is_verified = True
+                    target_user.verification_token = None
+                    db.session.commit()
+                    audit_logger.info(f"Gmail IMAP Auto-Verification Success: {target_user.username} (ID: {target_user.id}) - IP: {request.remote_addr}")
+                    flash("Email verified successfully from your Gmail inbox! Please log in.", "success")
+                    return redirect(url_for("login"))
+                else:
+                    flash("Verification token from email is invalid or has already been used.", "danger")
+                    return render_template("verify_gmail.html", default_email=email_address)
+            
+            elif reset_match:
+                token = reset_match.group(1)
+                flash("Reset link fetched successfully. Please choose your new password.", "success")
+                return redirect(url_for("reset_password", token=token))
+            
+            else:
+                flash("No activation or reset link found in the latest email body.", "danger")
+                return render_template("verify_gmail.html", default_email=email_address)
+
+        except imaplib.IMAP4.error as e:
+            audit_logger.warning(f"Gmail IMAP Login Failed for {email_address}: {str(e)} - IP: {request.remote_addr}")
+            flash("Authentication with Google failed. Please verify your App Password.", "danger")
+        except Exception as e:
+            audit_logger.error(f"Gmail IMAP Error for {email_address}: {str(e)} - IP: {request.remote_addr}")
+            flash(f"An error occurred while fetching emails: {str(e)}", "danger")
+
+    return render_template("verify_gmail.html", default_email=default_email)
 
 # =========================
 # HOME PAGE

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - Gmail Verification</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .loading-spinner {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(124, 58, 237, 0.1);
+            border-left-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px;">
+
+<div class="glass-panel" style="width: 100%; max-width: 480px; padding: 40px; text-align: center;">
+    <div class="brand-section" style="margin-bottom: 25px;">
+        <h1 class="brand-title" style="font-size: 2.5rem; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+            📧 Gmail Fetcher
+        </h1>
+        <p class="subtitle" style="font-size: 0.95rem;">Automated Inbound verification</p>
+    </div>
+
+    <div class="notice-box" style="margin-bottom: 25px; padding: 15px; font-size: 0.85rem;">
+        <div>
+            <strong>🔐 Google App Password Required</strong>
+            To fetch emails automatically, you must generate a 16-character App Password inside your Google Account settings (Security -> 2-Step Verification -> App passwords). Standard Gmail passwords will be rejected.
+        </div>
+    </div>
+
+    <!-- FLASHED MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}" style="margin-bottom: 20px; padding: 12px; border-radius: 12px; font-size: 0.9rem;">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form id="fetcher-form" action="/fetch-gmail-verification" method="POST" onsubmit="showLoading()" style="display: flex; flex-direction: column; gap: 20px; text-align: left;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
+        <div class="form-group">
+            <label for="email">Gmail Address</label>
+            <input type="email" id="email" name="email" value="{{ default_email }}" placeholder="yourname@gmail.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+            <label for="app_password">Google App Password</label>
+            <input type="password" id="app_password" name="app_password" placeholder="Enter 16-character app password" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-primary" style="margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span>🔍 Fetch & Verify Account</span>
+        </button>
+    </form>
+
+    <div class="loading-spinner" id="spinner"></div>
+    <p id="loading-text" style="display: none; font-size: 0.9rem; color: var(--color-text-secondary); margin-top: 10px; font-weight: 500;">
+        Connecting to Gmail IMAP & searching inbox...
+    </p>
+
+    <div style="margin-top: 24px; font-size: 0.9rem; color: var(--color-text-secondary); border-top: 1px solid rgba(124,58,237,0.06); padding-top: 20px;">
+        <a href="/login" style="color: var(--color-primary); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+            ⬅ Return to Login
+        </a>
+    </div>
+</div>
+
+<script>
+    function showLoading() {
+        document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('spinner').style.display = 'block';
+        document.getElementById('loading-text').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>

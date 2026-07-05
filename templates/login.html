@@ -22,6 +22,13 @@
             {% for category, message in messages %}
                 <div class="alert alert-{{ category }}">
                     <span>{{ message }}</span>
+                    {% if 'verify' in message.lower() or 'verification' in message.lower() %}
+                        <div style="margin-top: 10px;">
+                            <a href="/fetch-gmail-verification" style="padding: 6px 12px; font-size: 0.8rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.25); color: var(--color-primary); text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">
+                                📧 Auto-Verify via Gmail Fetcher
+                            </a>
+                        </div>
+                    {% endif %}
                 </div>
             {% endfor %}
         {% endif %}
@@ -48,9 +55,11 @@
         </button>
     </form>
 
-    <div style="margin-top: 24px; font-size: 0.9rem; color: var(--color-text-secondary);">
+    <div style="margin-top: 24px; font-size: 0.9rem; color: var(--color-text-secondary); line-height: 1.8;">
         Need a clinician account? 
         <a href="/register" style="color: var(--color-primary); font-weight: 600; text-decoration: none;">Register here</a>
+        <br>
+        <a href="/fetch-gmail-verification" style="color: var(--color-primary); font-size: 0.85rem; text-decoration: none; font-weight: 500;">📧 Verify using Gmail Fetcher</a>
     </div>
 </div>
 

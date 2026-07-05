@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriEye - Simulated Inbox</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --active-item: rgba(99, 102, 241, 0.15);
+            --active-border: #6366f1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand span {
+            font-size: 28px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+        }
+
+        .btn-outline:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .inbox-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 73px);
+            overflow: hidden;
+        }
+
+        /* Sidebar Email List */
+        .email-list-panel {
+            width: 380px;
+            border-right: 1px solid var(--glass-border);
+            background: rgba(15, 23, 42, 0.4);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .email-item {
+            padding: 20px;
+            border-bottom: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .email-item:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .email-item.active {
+            background: var(--active-item);
+        }
+
+        .email-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--active-border);
+        }
+
+        .email-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .email-subject {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .email-to {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .email-snippet {
+            font-size: 13px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Detail Panel */
+        .email-detail-panel {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.2);
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .empty-inbox-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            gap: 15px;
+        }
+
+        .empty-inbox-icon {
+            font-size: 64px;
+            opacity: 0.3;
+        }
+
+        .email-content {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .detail-header {
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+
+        .detail-subject {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #c084fc, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .detail-meta-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .detail-body {
+            line-height: 1.6;
+            font-size: 15px;
+            color: #e2e8f0;
+            white-space: pre-line;
+            margin-bottom: 30px;
+        }
+
+        .action-card {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px dashed rgba(99, 102, 241, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .action-card h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #a5b4fc;
+        }
+
+        .action-card p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .action-btn {
+            display: inline-block;
+            background: #4f46e5;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .action-btn:hover {
+            background: #4338ca;
+        }
+
+        /* Alert notifications */
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 20px;
+            font-size: 14px;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #a5b4fc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .alert-close {
+            cursor: pointer;
+            font-weight: 700;
+            opacity: 0.7;
+        }
+
+        .alert-close:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <span>👁️</span> NutriEye Clinician Inbox
+        </div>
+        <div class="header-actions">
+            <a href="/login" class="btn btn-outline">⬅ Back to Login</a>
+        </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert">
+                    <span>{{ message }}</span>
+                    <span class="alert-close" onclick="this.parentElement.style.display='none'">×</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="inbox-container">
+        <!-- EMAIL LIST -->
+        <div class="email-list-panel">
+            <div class="panel-header">
+                <h2>Clinical Messages</h2>
+                {% if emails %}
+                <form action="/inbox" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="clear">
+                    <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px;">Clear All</button>
+                </form>
+                {% endif %}
+            </div>
+
+            {% if not emails %}
+                <div style="padding: 40px; text-align: center; color: var(--text-muted); font-size: 14px;">
+                    No emails in mock inbox. Register or trigger reset to receive links.
+                </div>
+            {% else %}
+                {% for email in emails %}
+                    <div class="email-item" onclick="selectEmail(this)" 
+                         data-id="{{ email.id }}"
+                         data-to="{{ email.to_email }}"
+                         data-subject="{{ email.subject }}"
+                         data-timestamp="{{ email.timestamp.strftime('%Y-%b-%d %H:%M') }}"
+                         data-body="{{ email.body }}">
+                        <div class="email-meta">
+                            <span>To: {{ email.to_email }}</span>
+                            <span>{{ email.timestamp.strftime('%H:%M') }}</span>
+                        </div>
+                        <div class="email-subject">{{ email.subject }}</div>
+                        <div class="email-snippet">{{ email.body[:60] }}...</div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <!-- EMAIL DETAIL VIEW -->
+        <div class="email-detail-panel" id="detail-panel">
+            <div class="empty-inbox-view" id="empty-view">
+                <div class="empty-inbox-icon">✉</div>
+                <h3>Select a message to view verification parameters</h3>
+                <p>Click on any incoming clinician verification or reset request on the left pane.</p>
+            </div>
+
+            <div class="email-content" id="content-view" style="display: none;">
+                <div class="detail-header">
+                    <h1 class="detail-subject" id="detail-subject">Verification Email</h1>
+                    <div class="detail-meta-row">
+                        <span id="detail-to">To: test@hospital.com</span>
+                        <span id="detail-time">12:30 PM</span>
+                    </div>
+                </div>
+                <div class="detail-body" id="detail-body">
+                    Email contents...
+                </div>
+
+                <!-- Call to Action Container -->
+                <div class="action-card" id="action-card" style="display: none;">
+                    <h4 id="action-title">Action Required</h4>
+                    <p id="action-desc">Click the button below to process this request immediately.</p>
+                    <a href="#" class="action-btn" id="action-button" target="_blank">Verify Account</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectEmail(element) {
+            // Remove active from all list items
+            document.querySelectorAll('.email-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Set active class
+            element.classList.add('active');
+
+            // Hide empty view, show content view
+            document.getElementById('empty-view').style.display = 'none';
+            document.getElementById('content-view').style.display = 'block';
+
+            // Get data parameters
+            const to = element.getAttribute('data-to');
+            const subject = element.getAttribute('data-subject');
+            const time = element.getAttribute('data-timestamp');
+            const body = element.getAttribute('data-body');
+
+            // Populate fields
+            document.getElementById('detail-to').innerText = 'To: ' + to;
+            document.getElementById('detail-subject').innerText = subject;
+            document.getElementById('detail-time').innerText = time;
+            document.getElementById('detail-body').innerText = body;
+
+            // Look for links in the body
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const matches = body.match(urlRegex);
+
+            const actionCard = document.getElementById('action-card');
+            if (matches && matches.length > 0) {
+                const targetLink = matches[0];
+                actionCard.style.display = 'flex';
+                
+                const actionButton = document.getElementById('action-button');
+                actionButton.href = targetLink;
+
+                const actionTitle = document.getElementById('action-title');
+                const actionDesc = document.getElementById('action-desc');
+
+                if (subject.toLowerCase().includes('verify')) {
+                    actionTitle.innerText = '🛡️ Verify Clinical Identity';
+                    actionDesc.innerText = 'Click the button below to verify your email and activate your account.';
+                    actionButton.innerText = 'Verify & Activate Account';
+                } else if (subject.toLowerCase().includes('reset')) {
+                    actionTitle.innerText = '🔑 Reset Clinician Password';
+                    actionDesc.innerText = 'Click the button below to set a new password for your account.';
+                    actionButton.innerText = 'Reset Password Now';
+                } else {
+                    actionTitle.innerText = '⚡ Quick Actions';
+                    actionDesc.innerText = 'A link was found in the email body. Click below to open.';
+                    actionButton.innerText = 'Open Link';
+                }
+            } else {
+                actionCard.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
