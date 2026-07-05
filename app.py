@@ -335,6 +335,69 @@ def set_secure_headers_and_cookies(response):
             samesite=samesite,
             max_age=15*60
         )
+
+    # Inject Theme Switcher HTML/JS dynamically
+    if response.content_type and "text/html" in response.content_type:
+        try:
+            html_data = response.get_data(as_text=True)
+            # 1. Pre-fill theme at head to avoid flash of style
+            if "<head>" in html_data:
+                pre_script = "<head><script>document.documentElement.setAttribute('data-theme', localStorage.getItem('nutrieye_theme') || 'light');</script>"
+                html_data = html_data.replace("<head>", pre_script, 1)
+            
+            # 2. Add floating toggle button & button logic before body close
+            if "</body>" in html_data:
+                toggle_html = """
+<button id="theme-toggle-btn" class="theme-toggle-btn" aria-label="Toggle theme">
+    <!-- Sun Icon (for Dark Mode) -->
+    <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="display:none; width:22px; height:22px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m0 13.5V21M6.75 6.75l1.5 1.5m10.5 10.5l1.5 1.5M3 12h2.25m13.5 0H21M6.75 17.25l1.5-1.5m10.5-10.5l1.5-1.5M12 7.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9z" />
+    </svg>
+    <!-- Moon Icon (for Light Mode) -->
+    <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="display:none; width:22px; height:22px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+    </svg>
+</button>
+<script>
+    (function() {
+        const savedTheme = localStorage.getItem("nutrieye_theme") || "light";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            const btn = document.getElementById("theme-toggle-btn");
+            const sunIcon = document.getElementById("theme-icon-sun");
+            const moonIcon = document.getElementById("theme-icon-moon");
+            
+            function updateIcons(theme) {
+                if (theme === "dark") {
+                    sunIcon.style.display = "block";
+                    moonIcon.style.display = "none";
+                } else {
+                    sunIcon.style.display = "none";
+                    moonIcon.style.display = "block";
+                }
+            }
+            
+            if (btn && sunIcon && moonIcon) {
+                updateIcons(savedTheme);
+                
+                btn.addEventListener("click", function() {
+                    const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
+                    const newTheme = currentTheme === "dark" ? "light" : "dark";
+                    document.documentElement.setAttribute("data-theme", newTheme);
+                    localStorage.setItem("nutrieye_theme", newTheme);
+                    updateIcons(newTheme);
+                });
+            }
+        });
+    })();
+</script>
+"""
+                html_data = html_data.replace("</body>", toggle_html + "</body>")
+            response.set_data(html_data)
+        except Exception:
+            pass
+            
     return response
 
 # CSRF PROTECTION Form Check Helper
