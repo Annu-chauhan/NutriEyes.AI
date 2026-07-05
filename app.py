@@ -299,10 +299,30 @@ def load_user_from_jwt():
 def set_secure_headers_and_cookies(response):
     # Enforce Secure Headers
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["X-Frame-Options"] = "DENY"
+    
+    if "SPACE_ID" in os.environ:
+        # Allow embedding in Hugging Face Space iframe
+        response.headers.pop("X-Frame-Options", None)
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "frame-ancestors 'self' https://huggingface.co https://*.hf.space; "
+            "script-src 'self' 'unsafe-inline' https://omnidim.io; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https://api.qrserver.com;"
+        )
+    else:
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://omnidim.io; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https://api.qrserver.com;"
+        )
+        
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://omnidim.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://api.qrserver.com;"
     
     if hasattr(g, "new_access_token") and g.new_access_token:
         samesite = "None" if "SPACE_ID" in os.environ else "Lax"
