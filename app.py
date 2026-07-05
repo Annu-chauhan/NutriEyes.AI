@@ -516,12 +516,16 @@ def generate_hash(data):
 # SMTP EMAIL NOTIFICATION HELPERS
 # =========================
 
+def get_mail_config():
+    mail_server = os.environ.get("MAIL_SERVER") or os.environ.get("mail_server")
+    mail_port = os.environ.get("MAIL_PORT") or os.environ.get("mail_port")
+    mail_username = os.environ.get("MAIL_USERNAME") or os.environ.get("mail_username")
+    mail_password = os.environ.get("MAIL_PASSWORD") or os.environ.get("mail_password")
+    mail_sender = os.environ.get("MAIL_SENDER") or os.environ.get("mail_sender") or mail_username or "noreply@nutrieye.ai"
+    return mail_server, mail_port, mail_username, mail_password, mail_sender
+
 def send_verification_email(to_email, verification_code):
-    mail_server = os.environ.get("MAIL_SERVER")
-    mail_port = os.environ.get("MAIL_PORT")
-    mail_username = os.environ.get("MAIL_USERNAME")
-    mail_password = os.environ.get("MAIL_PASSWORD")
-    mail_sender = os.environ.get("MAIL_SENDER", "noreply@nutrieye.ai")
+    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     
     if mail_server and mail_port and mail_username and mail_password:
         import smtplib
@@ -551,12 +555,8 @@ def send_verification_email(to_email, verification_code):
             return False, str(e)
     return False, "SMTP not configured"
 
-def send_reset_email(to_email, reset_link):
-    mail_server = os.environ.get("MAIL_SERVER")
-    mail_port = os.environ.get("MAIL_PORT")
-    mail_username = os.environ.get("MAIL_USERNAME")
-    mail_password = os.environ.get("MAIL_PASSWORD")
-    mail_sender = os.environ.get("MAIL_SENDER", "noreply@nutrieye.ai")
+def send_reset_email(to_email, reset_code):
+    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     
     if mail_server and mail_port and mail_username and mail_password:
         import smtplib
@@ -568,7 +568,7 @@ def send_reset_email(to_email, reset_link):
             msg["To"] = to_email
             msg["Subject"] = "NutriEye - Password Reset Request"
             
-            body = f"Hello,\n\nPlease reset your password using the link below:\n{reset_link}\n\nThis link will expire in 1 hour.\n\nBest,\nNutriEye Team"
+            body = f"Hello,\n\nPlease reset your password using the following 6-digit recovery code:\n\n👉 {reset_code}\n\nThis code will expire in 1 hour.\n\nBest,\nNutriEye Team"
             msg.attach(MIMEText(body, "plain"))
             
             port = int(mail_port)
@@ -587,11 +587,7 @@ def send_reset_email(to_email, reset_link):
     return False, "SMTP not configured"
 
 def send_otp_email(to_email, otp_code):
-    mail_server = os.environ.get("MAIL_SERVER")
-    mail_port = os.environ.get("MAIL_PORT")
-    mail_username = os.environ.get("MAIL_USERNAME")
-    mail_password = os.environ.get("MAIL_PASSWORD")
-    mail_sender = os.environ.get("MAIL_SENDER", "noreply@nutrieye.ai")
+    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     
     if mail_server and mail_port and mail_username and mail_password:
         import smtplib
@@ -603,7 +599,7 @@ def send_otp_email(to_email, otp_code):
             msg["To"] = to_email
             msg["Subject"] = "NutriEye - Your One-Time verification Code (OTP)"
             
-            body = f"Hello,\n\nYour One-Time verification Code (OTP) to log in to NutriEye is:\n\n{otp_code}\n\nThis code will expire in 5 minutes. Do not share it with anyone.\n\nBest,\nNutriEye Team"
+            body = f"Hello,\n\nYour One-Time verification Code (OTP) to log in to NutriEye is:\n\n👉 {otp_code}\n\nThis code will expire in 5 minutes. Do not share it with anyone.\n\nBest,\nNutriEye Team"
             msg.attach(MIMEText(body, "plain"))
             
             port = int(mail_port)
