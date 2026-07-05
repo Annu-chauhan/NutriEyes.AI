@@ -1260,6 +1260,7 @@ def reset_password_otp():
 
 @app.route("/debug-db-users")
 def debug_db_users():
+    from flask import jsonify
     users = User.query.all()
     user_list = []
     for u in users:
