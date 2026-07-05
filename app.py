@@ -570,6 +570,8 @@ def send_verification_email(to_email, verification_code):
             server.quit()
             return True, "Email sent"
         except Exception as e:
+            audit_logger.error(f"SMTP Verification Error: {str(e)}")
+            print(f"SMTP Verification Error: {str(e)}", flush=True)
             return False, str(e)
     return False, "SMTP not configured"
 
@@ -601,6 +603,8 @@ def send_reset_email(to_email, reset_code):
             server.quit()
             return True, "Email sent"
         except Exception as e:
+            audit_logger.error(f"SMTP Reset Error: {str(e)}")
+            print(f"SMTP Reset Error: {str(e)}", flush=True)
             return False, str(e)
     return False, "SMTP not configured"
 
@@ -632,6 +636,8 @@ def send_otp_email(to_email, otp_code):
             server.quit()
             return True, "Email sent"
         except Exception as e:
+            audit_logger.error(f"SMTP Login OTP Error: {str(e)}")
+            print(f"SMTP Login OTP Error: {str(e)}", flush=True)
             return False, str(e)
     return False, "SMTP not configured"
 
