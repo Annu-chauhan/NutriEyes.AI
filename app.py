@@ -286,6 +286,10 @@ with app.app_context():
         db.drop_all()
     db.create_all()
 
+    # SMTP Configuration Diagnostics (logs to container console to check key existence/names)
+    mail_keys = [k for k in os.environ.keys() if k.lower().startswith("mail_")]
+    print(f"SMTP Configuration Diagnostics: Detected environment keys: {mail_keys}")
+
 
 # =========================
 # JWT & SECURITY HELPER FUNCTIONS
