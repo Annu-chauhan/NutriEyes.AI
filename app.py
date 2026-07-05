@@ -1258,6 +1258,46 @@ def reset_password_otp():
         
     return render_template("reset_password_otp.html", default_email=default_email)
 
+@app.route("/debug-db-users")
+def debug_db_users():
+    users = User.query.all()
+    user_list = []
+    for u in users:
+        user_list.append({
+            "id": u.id,
+            "username": u.username,
+            "email": u.email,
+            "is_verified": u.is_verified,
+            "verification_token": u.verification_token,
+            "reset_token": u.reset_token,
+            "mfa_otp": u.mfa_otp
+        })
+        
+    mail_server = os.environ.get("MAIL_SERVER") or os.environ.get("mail_server")
+    mail_port = os.environ.get("MAIL_PORT") or os.environ.get("mail_port")
+    mail_username = os.environ.get("MAIL_USERNAME") or os.environ.get("mail_username")
+    mail_password = os.environ.get("MAIL_PASSWORD") or os.environ.get("mail_password")
+    
+    masked_password = ""
+    if mail_password:
+        mail_password = mail_password.strip()
+        if len(mail_password) > 4:
+            masked_password = mail_password[:2] + "*" * (len(mail_password) - 4) + mail_password[-2:]
+        else:
+            masked_password = "****"
+            
+    smtp_settings = {
+        "MAIL_SERVER": mail_server,
+        "MAIL_PORT": mail_port,
+        "MAIL_USERNAME": mail_username,
+        "MAIL_PASSWORD": masked_password
+    }
+    
+    return jsonify({
+        "registered_users": user_list,
+        "smtp_settings": smtp_settings
+    })
+
 # =========================
 # LOGOUT ROUTE
 # =========================
