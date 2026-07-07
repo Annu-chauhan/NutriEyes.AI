@@ -400,6 +400,7 @@ def set_secure_headers_and_cookies(response):
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "frame-ancestors 'self' https://huggingface.co https://*.hf.space; "
+            "frame-src 'self' https://www.google.com/maps https://www.google.com; "
             "script-src 'self' 'unsafe-inline' https://omnidim.io; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
@@ -409,6 +410,7 @@ def set_secure_headers_and_cookies(response):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
+            "frame-src 'self' https://www.google.com/maps https://www.google.com; "
             "script-src 'self' 'unsafe-inline' https://omnidim.io; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
