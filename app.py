@@ -625,12 +625,13 @@ def send_email_via_api(to_email, subject, body):
         gmail_web_app_token = gmail_web_app_token.strip()
         import requests
         try:
-            r = requests.post(gmail_web_app_url, json={
+            params = {
                 "to": to_email,
                 "subject": subject,
                 "body": body,
                 "secret_token": gmail_web_app_token
-            }, timeout=10)
+            }
+            r = requests.post(gmail_web_app_url, json=params, params=params, timeout=10)
             if r.status_code == 200:
                 return True, "Email sent via Gmail Web App"
             else:
