@@ -574,80 +574,157 @@ def connect_smtp(mail_server, mail_port, mail_username, mail_password):
         except Exception as e2:
             raise Exception(f"Primary port {port} failed ({str(e1)}). Fallback port {fallback_port} failed ({str(e2)})")
 
+def send_email_via_api(to_email, subject, body):
+    # Try Brevo API first (port 443 HTTPS - allowed on Hugging Face)
+    brevo_api_key = os.environ.get("BREVO_API_KEY") or os.environ.get("brevo_api_key")
+    if brevo_api_key:
+        brevo_api_key = brevo_api_key.strip()
+        mail_sender = os.environ.get("MAIL_SENDER") or os.environ.get("mail_sender") or os.environ.get("MAIL_USERNAME") or "noreply@nutrieye.ai"
+        mail_sender = mail_sender.strip()
+        
+        # Get username
+        user = User.query.filter_by(email=to_email).first()
+        username = user.username if user else "Clinician"
+        
+        import requests
+        import json
+        url = "https://api.brevo.com/v3/smtp/email"
+        headers = {
+            "accept": "application/json",
+            "api-key": brevo_api_key,
+            "content-type": "application/json"
+        }
+        payload = {
+            "sender": {"name": "NutriEye Team", "email": mail_sender},
+            "to": [{"email": to_email, "name": username}],
+            "subject": subject,
+            "textContent": body
+        }
+        try:
+            r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=10)
+            if r.status_code in [200, 201, 202]:
+                return True, "Email sent via Brevo API"
+            else:
+                return False, f"Brevo API error: {r.text}"
+        except Exception as e:
+            return False, f"Brevo API Exception: {str(e)}"
+            
+    # Try Google Script Web App proxy second (port 443 HTTPS - allowed on Hugging Face)
+    gmail_web_app_url = os.environ.get("GMAIL_WEB_APP_URL") or os.environ.get("gmail_web_app_url")
+    if gmail_web_app_url:
+        gmail_web_app_url = gmail_web_app_url.strip()
+        import requests
+        try:
+            r = requests.post(gmail_web_app_url, json={
+                "to": to_email,
+                "subject": subject,
+                "body": body
+            }, timeout=10)
+            if r.status_code == 200:
+                return True, "Email sent via Gmail Web App"
+            else:
+                return False, f"Gmail Web App error: {r.text}"
+        except Exception as e:
+            return False, f"Gmail Web App Exception: {str(e)}"
+            
+    return False, "HTTPS APIs not configured"
+
 def send_verification_email(to_email, verification_code):
-    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
+    user = User.query.filter_by(email=to_email).first()
+    username = user.username if user else "Clinician"
     
+    subject = "Confirm your identity"
+    body = f"Hello {username},\n\nJust one more step before you get started.\n\nYou must confirm your identity using the one-time pass code : {verification_code}\n\nNote : This code will expire in 10 minutes.\n\nSincerely,\nNutriEye Diagnostics Team."
+    
+    # Try HTTPS APIs first to bypass Hugging Face SMTP block
+    is_sent, msg = send_email_via_api(to_email, subject, body)
+    if is_sent:
+        return True, msg
+        
+    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     if mail_server and mail_port and mail_username and mail_password:
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         try:
-            msg = MIMEMultipart()
-            msg["From"] = mail_sender
-            msg["To"] = to_email
-            msg["Subject"] = "NutriEye - Verify Your Email"
-            
-            body = f"Hello,\n\nPlease verify your email to activate your clinician account. Use the following 6-digit verification code:\n\n👉 {verification_code}\n\nBest,\nNutriEye Team"
-            msg.attach(MIMEText(body, "plain"))
+            msg_mime = MIMEMultipart()
+            msg_mime["From"] = f"NutriEye Team <{mail_sender}>"
+            msg_mime["To"] = to_email
+            msg_mime["Subject"] = subject
+            msg_mime.attach(MIMEText(body, "plain"))
             
             server = connect_smtp(mail_server, mail_port, mail_username, mail_password)
-            server.sendmail(mail_sender, to_email, msg.as_string())
+            server.sendmail(mail_sender, to_email, msg_mime.as_string())
             server.quit()
-            return True, "Email sent"
+            return True, "Email sent via SMTP fallback"
         except Exception as e:
             audit_logger.error(f"SMTP Verification Error: {str(e)}")
             print(f"SMTP Verification Error: {str(e)}", flush=True)
             return False, str(e)
-    return False, "SMTP not configured"
+    return False, "SMTP and API not configured"
 
 def send_reset_email(to_email, reset_code):
-    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
+    user = User.query.filter_by(email=to_email).first()
+    username = user.username if user else "Clinician"
     
+    subject = "Confirm your identity"
+    body = f"Hello {username},\n\nJust one more step before you get started.\n\nYou must confirm your identity using the one-time pass code : {reset_code}\n\nNote : This code will expire in 10 minutes.\n\nSincerely,\nNutriEye Diagnostics Team."
+    
+    is_sent, msg = send_email_via_api(to_email, subject, body)
+    if is_sent:
+        return True, msg
+        
+    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     if mail_server and mail_port and mail_username and mail_password:
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         try:
-            msg = MIMEMultipart()
-            msg["From"] = mail_sender
-            msg["To"] = to_email
-            msg["Subject"] = "NutriEye - Password Reset Request"
-            
-            body = f"Hello,\n\nPlease reset your password using the following 6-digit recovery code:\n\n👉 {reset_code}\n\nThis code will expire in 1 hour.\n\nBest,\nNutriEye Team"
-            msg.attach(MIMEText(body, "plain"))
+            msg_mime = MIMEMultipart()
+            msg_mime["From"] = f"NutriEye Team <{mail_sender}>"
+            msg_mime["To"] = to_email
+            msg_mime["Subject"] = subject
+            msg_mime.attach(MIMEText(body, "plain"))
             
             server = connect_smtp(mail_server, mail_port, mail_username, mail_password)
-            server.sendmail(mail_sender, to_email, msg.as_string())
+            server.sendmail(mail_sender, to_email, msg_mime.as_string())
             server.quit()
-            return True, "Email sent"
+            return True, "Email sent via SMTP fallback"
         except Exception as e:
             audit_logger.error(f"SMTP Reset Error: {str(e)}")
             print(f"SMTP Reset Error: {str(e)}", flush=True)
             return False, str(e)
-    return False, "SMTP not configured"
+    return False, "SMTP and API not configured"
 
 def send_otp_email(to_email, otp_code):
-    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
+    user = User.query.filter_by(email=to_email).first()
+    username = user.username if user else "Clinician"
     
+    subject = "Confirm your identity"
+    body = f"Hello {username},\n\nJust one more step before you get started.\n\nYou must confirm your identity using the one-time pass code : {otp_code}\n\nNote : This code will expire in 10 minutes.\n\nSincerely,\nNutriEye Diagnostics Team."
+    
+    is_sent, msg = send_email_via_api(to_email, subject, body)
+    if is_sent:
+        return True, msg
+        
+    mail_server, mail_port, mail_username, mail_password, mail_sender = get_mail_config()
     if mail_server and mail_port and mail_username and mail_password:
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         try:
-            msg = MIMEMultipart()
-            msg["From"] = mail_sender
-            msg["To"] = to_email
-            msg["Subject"] = "NutriEye - Your One-Time verification Code (OTP)"
-            
-            body = f"Hello,\n\nYour One-Time verification Code (OTP) to log in to NutriEye is:\n\n👉 {otp_code}\n\nThis code will expire in 5 minutes. Do not share it with anyone.\n\nBest,\nNutriEye Team"
-            msg.attach(MIMEText(body, "plain"))
+            msg_mime = MIMEMultipart()
+            msg_mime["From"] = f"NutriEye Team <{mail_sender}>"
+            msg_mime["To"] = to_email
+            msg_mime["Subject"] = subject
+            msg_mime.attach(MIMEText(body, "plain"))
             
             server = connect_smtp(mail_server, mail_port, mail_username, mail_password)
-            server.sendmail(mail_sender, to_email, msg.as_string())
+            server.sendmail(mail_sender, to_email, msg_mime.as_string())
             server.quit()
-            return True, "Email sent"
+            return True, "Email sent via SMTP fallback"
         except Exception as e:
             audit_logger.error(f"SMTP Login OTP Error: {str(e)}")
             print(f"SMTP Login OTP Error: {str(e)}", flush=True)
             return False, str(e)
-    return False, "SMTP not configured"
+    return False, "SMTP and API not configured"
 
 
 # =========================
