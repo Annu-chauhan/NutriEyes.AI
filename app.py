@@ -650,6 +650,7 @@ def send_verification_email(to_email, verification_code):
     
     # Try HTTPS APIs first to bypass Hugging Face SMTP block
     is_sent, msg = send_email_via_api(to_email, subject, body)
+    print(f"API Send Attempt (Verification): is_sent={is_sent}, msg={msg}", flush=True)
     if is_sent:
         return True, msg
         
@@ -682,6 +683,7 @@ def send_reset_email(to_email, reset_code):
     body = f"Hello {username},\n\nJust one more step before you get started.\n\nYou must confirm your identity using the one-time pass code : {reset_code}\n\nNote : This code will expire in 10 minutes.\n\nSincerely,\nNutriEye Diagnostics Team."
     
     is_sent, msg = send_email_via_api(to_email, subject, body)
+    print(f"API Send Attempt (Reset): is_sent={is_sent}, msg={msg}", flush=True)
     if is_sent:
         return True, msg
         
@@ -714,6 +716,7 @@ def send_otp_email(to_email, otp_code):
     body = f"Hello {username},\n\nJust one more step before you get started.\n\nYou must confirm your identity using the one-time pass code : {otp_code}\n\nNote : This code will expire in 10 minutes.\n\nSincerely,\nNutriEye Diagnostics Team."
     
     is_sent, msg = send_email_via_api(to_email, subject, body)
+    print(f"API Send Attempt (OTP): is_sent={is_sent}, msg={msg}", flush=True)
     if is_sent:
         return True, msg
         
