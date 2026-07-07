@@ -289,7 +289,13 @@ def get_mail_config():
 
 def send_email_async(send_fn, *args):
     import threading
-    threading.Thread(target=send_fn, args=args, daemon=True).start()
+    def wrapper(*w_args):
+        with app.app_context():
+            try:
+                send_fn(*w_args)
+            except Exception as thread_err:
+                print(f"Async email thread error: {str(thread_err)}", flush=True)
+    threading.Thread(target=wrapper, args=args, daemon=True).start()
 
 # CREATE TABLES AFTER MODEL IS DEFINED (WITH AUTO RE-CREATION SCHEMA VERIFICATION)
 with app.app_context():
