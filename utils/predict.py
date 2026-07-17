@@ -14,34 +14,31 @@ from utils.gradcam import (
     generate_gradcam
 )
 
-print("Retina model loading...")
+_model = None
 
-MODEL_PATH = os.path.join(
-    "model",
-    "retinal_5class.h5"
-)
-
-print("Using local model:", MODEL_PATH)
-
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError(
-        f"Model not found: {MODEL_PATH}"
-    )
-
-model = load_model(
-    MODEL_PATH,
-    compile=False
-)
-
-print("Retina model loaded successfully")
-# =========================
-# MODEL INFO
-# =========================
-
-print(
-    "Model Output Shape:",
-    model.output_shape
-)
+def get_model():
+    global _model
+    if _model is None:
+        print("Retina model loading lazily...")
+        MODEL_PATH = os.path.join(
+            "model",
+            "retinal_5class.h5"
+        )
+        print("Using local model:", MODEL_PATH)
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(
+                f"Model not found: {MODEL_PATH}"
+            )
+        _model = load_model(
+            MODEL_PATH,
+            compile=False
+        )
+        print("Retina model loaded successfully")
+        print(
+            "Model Output Shape:",
+            _model.output_shape
+        )
+    return _model
 
 # =========================
 # CLASS LABELS
@@ -197,7 +194,7 @@ def predict_disease(filepath):
     # MODEL PREDICTION
     # =========================
 
-    prediction = model.predict(img_array)
+    prediction = get_model().predict(img_array)
 
     print("\n========== PREDICTION ==========")
     print(prediction)
@@ -306,11 +303,8 @@ def predict_disease(filepath):
     try:
 
         returned_path = generate_gradcam(
-
-            model,
-
+            get_model(),
             filepath,
-
             gradcam_path
         )
 
