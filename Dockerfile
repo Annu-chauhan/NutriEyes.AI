@@ -9,4 +9,4 @@ RUN pip install -r requirements.txt
 
 EXPOSE 7860
 
-CMD ["gunicorn", "--bind", "0.0.0.0:7860", "--timeout", "120", "app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-7860} --timeout 120 app:app"]

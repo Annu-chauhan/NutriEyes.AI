@@ -3,9 +3,6 @@ import numpy as np
 
 from PIL import Image
 
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
-
 from utils.health_recommendation import (
     get_health_recommendation
 )
@@ -19,6 +16,7 @@ _model = None
 def get_model():
     global _model
     if _model is None:
+        from tensorflow.keras.models import load_model
         print("Retina model loading lazily...")
         MODEL_PATH = os.path.join(
             "model",
@@ -116,6 +114,8 @@ def get_confidence_level(confidence):
 # =========================
 
 def predict_disease(filepath):
+
+    from tensorflow.keras.preprocessing import image
 
     # =========================
     # LOAD IMAGE

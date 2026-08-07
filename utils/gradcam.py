@@ -1,12 +1,12 @@
 import numpy as np
-import tensorflow as tf
 import cv2
 import os
 
-from tensorflow.keras.preprocessing import image
-
 
 def generate_gradcam(model, img_path, save_path):
+
+    import tensorflow as tf
+    from tensorflow.keras.preprocessing import image
 
     # =========================
     # LOAD IMAGE
